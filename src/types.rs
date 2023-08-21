@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 /// A dogstatsd metric is stored internally as the original line of bytes that went over UDP.
 ///
 /// Parsing methods are added as needed, and they operate lazily.
