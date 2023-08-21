@@ -17,38 +17,50 @@ pub struct Metric {
     // TODO: use global arena to allocate strings?
     //
     pub raw: Vec<u8>,
+    tags_pos: Option<(usize, usize)>,
 }
 
 impl Metric {
     pub fn new(raw: Vec<u8>) -> Self {
-        Metric { raw }
+        let tags_pos = raw.windows(2).position(|x| x == &[b'|', b'#']).map(|i| {
+            (
+                i + 2,
+                match raw.iter().skip(i + 2).position(|&x| x == b'|') {
+                    Some(j) => j,
+                    None => raw.len(),
+                },
+            )
+        });
+        Metric { raw, tags_pos }
     }
 
     pub fn name(&self) -> Option<&[u8]> {
         self.raw.splitn(2, |&x| x == b':').next()
     }
 
-    fn tags_start_pos(&self) -> Option<usize> {
-        self.raw
-            .iter()
-            .enumerate()
-            .rfind(|(_, &x)| x == b'#')
-            .map(|(i, _)| i + 1)
-    }
-
     pub fn tags(&self) -> Option<&[u8]> {
-        Some(&self.raw[self.tags_start_pos()?..])
+        self.tags_pos.map(|(i, j)| &self.raw[i..j])
     }
 
     pub fn set_tags(&mut self, tags: &[u8]) {
-        if let Some(tags) = self.tags() {
-            self.raw
-                .truncate(tags.as_ptr() as usize - self.raw.as_slice().as_ptr() as usize);
+        if tags.is_empty() {
+            if let Some((i, j)) = self.tags_pos {
+                self.raw.drain(i - 2..j);
+            }
         } else {
-            self.raw.extend(b"|#");
+            match self.tags_pos {
+                Some((i, j)) => {
+                    self.raw.splice(i..j, tags.iter().cloned());
+                    self.tags_pos = Some((i, i + tags.len()));
+                }
+                None => {
+                    self.raw.extend(b"|#");
+                    let start = self.raw.len();
+                    self.tags_pos = Some((start, start + tags.len()));
+                    self.raw.extend(tags);
+                }
+            }
         }
-
-        self.raw.extend(tags);
     }
 }
 
@@ -74,7 +86,7 @@ mod tests {
         assert_eq!(metric.tags(), None);
 
         metric.set_tags(b"");
-        assert_eq!(metric.tags(), Some(b"".as_slice()));
+        assert_eq!(metric.tags(), None);
 
         metric.set_tags(b"country:japan");
         assert_eq!(metric.tags(), Some(b"country:japan".as_slice()));
