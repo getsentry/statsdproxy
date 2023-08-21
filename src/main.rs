@@ -1,6 +1,7 @@
 use anyhow::Error;
 use clap::Parser;
 
+mod config;
 mod middleware;
 mod types;
 use middleware::{Server, Upstream};
@@ -15,6 +16,8 @@ struct Args {
     #[arg(short, long)]
     upstream: String,
     // TODO: implement a middleware, a way of nesting them and a configuration file
+    #[arg(short, long)]
+    config_path: String,
 }
 
 #[tokio::main]
@@ -23,6 +26,7 @@ async fn main() -> Result<(), Error> {
 
     let client = Upstream::new(args.upstream).await?;
     let server = Server::new(args.listen, client).await?;
+    let config = config::Config::new(&args.config_path)?;
     server.run().await?;
 
     Ok(())
