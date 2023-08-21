@@ -6,8 +6,8 @@ use anyhow::Error;
 use crate::types::Metric;
 
 pub mod allow_tag;
-pub mod deny_tag;
 pub mod cardinality_limit;
+pub mod deny_tag;
 
 pub struct Overloaded {
     pub metric: Metric,
@@ -24,7 +24,6 @@ impl Middleware for Box<dyn Middleware> {
         self.as_mut().submit(metric)
     }
 }
-
 
 pub trait Middleware {
     fn join(&mut self) -> Result<(), Error> {

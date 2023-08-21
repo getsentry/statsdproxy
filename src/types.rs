@@ -23,10 +23,14 @@ pub struct Metric {
 
 impl Metric {
     pub fn new(raw: Vec<u8>) -> Self {
-        let tags_pos = raw.windows(2).position(|x| x == &[b'|', b'#']).map(|i| {
+        let tags_pos = raw.windows(2).position(|x| x == [b'|', b'#']).map(|i| {
             (
                 i + 2,
-                raw.iter().skip(i + 2).position(|&x| x == b'|').map(|x| x + i + 2).unwrap_or(raw.len())
+                raw.iter()
+                    .skip(i + 2)
+                    .position(|&x| x == b'|')
+                    .map(|x| x + i + 2)
+                    .unwrap_or(raw.len()),
             )
         });
         Metric { raw, tags_pos }
@@ -69,20 +73,15 @@ mod tests {
 
     #[test]
     fn none_tags() {
-        let metric =
-            Metric::new(b"users.online:1|c|@0.5".to_vec());
+        let metric = Metric::new(b"users.online:1|c|@0.5".to_vec());
         assert_eq!(metric.tags(), None);
         assert_eq!(metric.name().unwrap(), b"users.online");
-        assert_eq!(
-            metric.raw,
-            b"users.online:1|c|@0.5"
-        );
+        assert_eq!(metric.raw, b"users.online:1|c|@0.5");
     }
 
     #[test]
     fn some_tags_end() {
-        let metric =
-            Metric::new(b"users.online:1|c|@0.5|#instance:foobar,country:china".to_vec());
+        let metric = Metric::new(b"users.online:1|c|@0.5|#instance:foobar,country:china".to_vec());
         assert_eq!(metric.tags().unwrap(), b"instance:foobar,country:china");
         assert_eq!(metric.name().unwrap(), b"users.online");
         assert_eq!(
@@ -93,8 +92,9 @@ mod tests {
 
     #[test]
     fn some_tags_middle() {
-        let metric =
-            Metric::new(b"users.online:1|c|@0.5|#instance:foobar,country:china|T1692653389".to_vec());
+        let metric = Metric::new(
+            b"users.online:1|c|@0.5|#instance:foobar,country:china|T1692653389".to_vec(),
+        );
         assert_eq!(metric.tags().unwrap(), b"instance:foobar,country:china");
         assert_eq!(metric.name().unwrap(), b"users.online");
         assert_eq!(
@@ -105,56 +105,45 @@ mod tests {
 
     #[test]
     fn add_none_tags_to_none() {
-        let mut metric =
-            Metric::new(b"users.online:1|c|@0.5".to_vec());
+        let mut metric = Metric::new(b"users.online:1|c|@0.5".to_vec());
 
         metric.set_tags(b"");
         assert_eq!(metric.tags(), None);
         assert_eq!(metric.name().unwrap(), b"users.online");
-        assert_eq!(
-            metric.raw,
-            b"users.online:1|c|@0.5"
-        );
+        assert_eq!(metric.raw, b"users.online:1|c|@0.5");
     }
 
     #[test]
     fn add_tags_to_none() {
-        let mut metric =
-            Metric::new(b"users.online:1|c|@0.5".to_vec());
+        let mut metric = Metric::new(b"users.online:1|c|@0.5".to_vec());
 
         metric.set_tags(b"country:japan");
         assert_eq!(metric.tags().unwrap(), b"country:japan");
         assert_eq!(metric.name().unwrap(), b"users.online");
-        assert_eq!(
-            metric.raw,
-            b"users.online:1|c|@0.5|#country:japan"
-        );
+        assert_eq!(metric.raw, b"users.online:1|c|@0.5|#country:japan");
     }
 
     #[test]
     fn remove_tags_end() {
-        let mut metric = Metric::new(b"users.online:1|c|@0.5|#instance:foobar,country:china".to_vec());
+        let mut metric =
+            Metric::new(b"users.online:1|c|@0.5|#instance:foobar,country:china".to_vec());
 
         metric.set_tags(b"");
         assert_eq!(metric.tags(), None);
         assert_eq!(metric.name().unwrap(), b"users.online");
-        assert_eq!(
-            metric.raw,
-            b"users.online:1|c|@0.5"
-        );
+        assert_eq!(metric.raw, b"users.online:1|c|@0.5");
     }
 
     #[test]
     fn remove_tags_middle() {
-        let mut metric = Metric::new(b"users.online:1|c|@0.5|#instance:foobar,country:china|T1692653389".to_vec());
+        let mut metric = Metric::new(
+            b"users.online:1|c|@0.5|#instance:foobar,country:china|T1692653389".to_vec(),
+        );
 
         metric.set_tags(b"");
         assert_eq!(metric.tags(), None);
         assert_eq!(metric.name().unwrap(), b"users.online");
-        assert_eq!(
-            metric.raw,
-            b"users.online:1|c|@0.5|T1692653389"
-        );
+        assert_eq!(metric.raw, b"users.online:1|c|@0.5|T1692653389");
     }
 
     #[test]
@@ -165,16 +154,14 @@ mod tests {
         metric.set_tags(b"country:japan");
         assert_eq!(metric.tags().unwrap(), b"country:japan");
         assert_eq!(metric.name().unwrap(), b"users.online");
-        assert_eq!(
-            metric.raw,
-            b"users.online:1|c|@0.5|#country:japan"
-        );
+        assert_eq!(metric.raw, b"users.online:1|c|@0.5|#country:japan");
     }
 
     #[test]
     fn change_tags_middle() {
-        let mut metric =
-            Metric::new(b"users.online:1|c|@0.5|#instance:foobar,country:china|T1692653389".to_vec());
+        let mut metric = Metric::new(
+            b"users.online:1|c|@0.5|#instance:foobar,country:china|T1692653389".to_vec(),
+        );
 
         metric.set_tags(b"country:japan");
         assert_eq!(metric.tags().unwrap(), b"country:japan");
