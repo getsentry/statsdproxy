@@ -5,9 +5,26 @@ use anyhow::Error;
 
 use crate::types::Metric;
 
+pub mod allow_tag;
+pub mod deny_tag;
+pub mod cardinality_limit;
+
 pub struct Overloaded {
     pub metric: Metric,
 }
+
+impl Middleware for Box<dyn Middleware> {
+    fn join(&mut self) -> Result<(), Error> {
+        self.as_mut().join()
+    }
+    fn poll(&mut self) -> Result<(), Error> {
+        self.as_mut().poll()
+    }
+    fn submit(&mut self, metric: Metric) -> Result<(), Overloaded> {
+        self.as_mut().submit(metric)
+    }
+}
+
 
 pub trait Middleware {
     fn join(&mut self) -> Result<(), Error> {
