@@ -16,14 +16,11 @@ impl Config {
 }
 
 #[derive(Debug, Deserialize, PartialEq)]
-#[serde(tag = "type")]
+#[serde(tag = "type", rename_all = "kebab-case")]
 pub enum MiddlewareConfig {
-    #[serde(rename(deserialize = "deny-tag"))]
-    DenyTagConfig(DenyTagConfig),
-    #[serde(rename(deserialize = "allow-tag"))]
-    AllowTagConfig(AllowTagConfig),
-    #[serde(rename(deserialize = "cardinality-limit"))]
-    CardinalityLimit(CardinalityLimit),
+    DenyTag(DenyTagConfig),
+    AllowTag(AllowTagConfig),
+    CardinalityLimit(CardinalityLimitConfig),
 }
 
 #[derive(Debug, Deserialize, PartialEq)]
@@ -37,7 +34,7 @@ pub struct AllowTagConfig {
 }
 
 #[derive(Debug, Deserialize, PartialEq)]
-pub struct CardinalityLimit {}
+pub struct CardinalityLimitConfig {}
 
 mod tests {
     use super::*;
@@ -47,10 +44,10 @@ mod tests {
         let config = Config::new("example.yaml").unwrap();
         let expected = Config {
             middlewares: vec![
-                MiddlewareConfig::DenyTagConfig(DenyTagConfig {
+                MiddlewareConfig::DenyTag(DenyTagConfig {
                     tags: vec!["a".to_string(), "b".to_string(), "c".to_string()],
                 }),
-                MiddlewareConfig::CardinalityLimit(CardinalityLimit {}),
+                MiddlewareConfig::CardinalityLimit(CardinalityLimitConfig {}),
             ],
         };
         assert_eq!(config, expected);
