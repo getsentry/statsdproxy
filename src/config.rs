@@ -36,6 +36,7 @@ pub struct AllowTagConfig {
 #[derive(Debug, Deserialize, PartialEq)]
 pub struct CardinalityLimitConfig {}
 
+#[cfg(test)]
 mod tests {
     use super::*;
 
