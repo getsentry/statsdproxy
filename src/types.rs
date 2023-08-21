@@ -66,31 +66,120 @@ mod tests {
     use super::*;
 
     #[test]
-    fn basic() {
-        let mut metric =
+    fn none_tags() {
+        let metric =
+            Metric::new(b"users.online:1|c|@0.5".to_vec());
+        assert_eq!(metric.tags(), None);
+        assert_eq!(metric.name().unwrap(), b"users.online");
+        assert_eq!(
+            metric.raw,
+            b"users.online:1|c|@0.5"
+        );
+    }
+
+    #[test]
+    fn some_tags_end() {
+        let metric =
             Metric::new(b"users.online:1|c|@0.5|#instance:foobar,country:china".to_vec());
         assert_eq!(metric.tags().unwrap(), b"instance:foobar,country:china");
         assert_eq!(metric.name().unwrap(), b"users.online");
+        assert_eq!(
+            metric.raw,
+            b"users.online:1|c|@0.5|#instance:foobar,country:china"
+        );
+    }
+
+    #[test]
+    fn some_tags_middle() {
+        let metric =
+            Metric::new(b"users.online:1|c|@0.5|#instance:foobar,country:china|T1692653389".to_vec());
+        assert_eq!(metric.tags().unwrap(), b"instance:foobar,country:china");
+        assert_eq!(metric.name().unwrap(), b"users.online");
+        assert_eq!(
+            metric.raw,
+            b"users.online:1|c|@0.5|#instance:foobar,country:china|T1692653389"
+        );
+    }
+
+    #[test]
+    fn add_none_tags_to_none() {
+        let mut metric =
+            Metric::new(b"users.online:1|c|@0.5".to_vec());
+
+        metric.set_tags(b"");
+        assert_eq!(metric.tags(), None);
+        assert_eq!(metric.name().unwrap(), b"users.online");
+        assert_eq!(
+            metric.raw,
+            b"users.online:1|c|@0.5"
+        );
+    }
+
+    #[test]
+    fn add_tags_to_none() {
+        let mut metric =
+            Metric::new(b"users.online:1|c|@0.5".to_vec());
 
         metric.set_tags(b"country:japan");
         assert_eq!(metric.tags().unwrap(), b"country:japan");
         assert_eq!(metric.name().unwrap(), b"users.online");
+        assert_eq!(
+            metric.raw,
+            b"users.online:1|c|@0.5|#country:japan"
+        );
     }
 
     #[test]
-    fn set_tags() {
-        let mut metric = Metric::new(b"users.online:1|c|@0.5".to_vec());
-        assert_eq!(metric.tags(), None);
+    fn remove_tags_end() {
+        let mut metric = Metric::new(b"users.online:1|c|@0.5|#instance:foobar,country:china".to_vec());
 
         metric.set_tags(b"");
         assert_eq!(metric.tags(), None);
-
-        metric.set_tags(b"country:japan");
-        assert_eq!(metric.tags(), Some(b"country:japan".as_slice()));
-
+        assert_eq!(metric.name().unwrap(), b"users.online");
         assert_eq!(
             metric.raw,
-            b"users.online:1|c|@0.5|#country:japan".as_slice()
+            b"users.online:1|c|@0.5"
+        );
+    }
+
+    #[test]
+    fn remove_tags_middle() {
+        let mut metric = Metric::new(b"users.online:1|c|@0.5|#instance:foobar,country:china|T1692653389".to_vec());
+
+        metric.set_tags(b"");
+        assert_eq!(metric.tags(), None);
+        assert_eq!(metric.name().unwrap(), b"users.online");
+        assert_eq!(
+            metric.raw,
+            b"users.online:1|c|@0.5|T1692653389"
+        );
+    }
+
+    #[test]
+    fn change_tags_end() {
+        let mut metric =
+            Metric::new(b"users.online:1|c|@0.5|#instance:foobar,country:china".to_vec());
+
+        metric.set_tags(b"country:japan");
+        assert_eq!(metric.tags().unwrap(), b"country:japan");
+        assert_eq!(metric.name().unwrap(), b"users.online");
+        assert_eq!(
+            metric.raw,
+            b"users.online:1|c|@0.5|#country:japan"
+        );
+    }
+
+    #[test]
+    fn change_tags_middle() {
+        let mut metric =
+            Metric::new(b"users.online:1|c|@0.5|#instance:foobar,country:china|T1692653389".to_vec());
+
+        metric.set_tags(b"country:japan");
+        assert_eq!(metric.tags().unwrap(), b"country:japan");
+        assert_eq!(metric.name().unwrap(), b"users.online");
+        assert_eq!(
+            metric.raw,
+            b"users.online:1|c|@0.5|#country:japan|T1692653389"
         );
     }
 }
