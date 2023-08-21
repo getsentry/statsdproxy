@@ -54,7 +54,7 @@ where
     M: Middleware,
 {
     pub fn new(listen: String, middleware: M) -> Result<Self, Error> {
-        let socket = UdpSocket::bind(&listen)?;
+        let socket = UdpSocket::bind(listen)?;
         Ok(Server { socket, middleware })
     }
 
