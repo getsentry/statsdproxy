@@ -20,14 +20,13 @@ struct Args {
     config_path: String,
 }
 
-#[tokio::main]
-async fn main() -> Result<(), Error> {
+fn main() -> Result<(), Error> {
     let args = Args::parse();
 
-    let client = Upstream::new(args.upstream).await?;
-    let server = Server::new(args.listen, client).await?;
+    let client = Upstream::new(args.upstream)?;
+    let server = Server::new(args.listen, client)?;
     let _config = config::Config::new(&args.config_path)?;
-    server.run().await?;
+    server.run()?;
 
     Ok(())
 }
