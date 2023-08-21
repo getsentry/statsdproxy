@@ -20,13 +20,12 @@ struct Args {
     config_path: String,
 }
 
-#[tokio::main]
-async fn main() -> Result<(), Error> {
+fn main() -> Result<(), Error> {
     let args = Args::parse();
 
     let config = config::Config::new(&args.config_path)?;
 
-    let mut client: Box<dyn middleware::Middleware> = Box::new(Upstream::new(args.upstream).await?);
+    let mut client: Box<dyn middleware::Middleware> = Box::new(Upstream::new(args.upstream)?);
     for middleware_config in config.middlewares.into_iter().rev() {
         match middleware_config {
             config::MiddlewareConfig::AllowTag(config) => {
@@ -45,7 +44,7 @@ async fn main() -> Result<(), Error> {
 
     let server = Server::new(args.listen, client).await?;
 
-    server.run().await?;
+    server.run()?;
 
     Ok(())
 }
