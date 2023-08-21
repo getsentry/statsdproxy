@@ -1,0 +1,7 @@
+middlewares:
+  - type: deny-tag
+    tags: [a, b, c]
+  - type: cardinality-limit
+    limits:
+      - window: 3600
+        limit: 3
