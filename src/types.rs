@@ -25,7 +25,7 @@ impl Metric {
         let tags_pos = raw.windows(2).position(|x| x == &[b'|', b'#']).map(|i| {
             (
                 i + 2,
-                raw.iter().skip(i + 2).position(|&x| x == b'|').unwrap_or(raw.len())
+                raw.iter().skip(i + 2).position(|&x| x == b'|').map(|x| x + i + 2).unwrap_or(raw.len())
             )
         });
         Metric { raw, tags_pos }
@@ -43,6 +43,7 @@ impl Metric {
         if tags.is_empty() {
             if let Some((i, j)) = self.tags_pos {
                 self.raw.drain(i - 2..j);
+                self.tags_pos = None;
             }
         } else {
             match self.tags_pos {
