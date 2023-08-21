@@ -38,6 +38,8 @@ pub trait Middleware {
 
 pub struct Upstream {
     socket: Arc<UdpSocket>,
+    buffer: [u8; 4096],
+    buf_used: usize,
 }
 
 impl Upstream {
@@ -48,15 +50,37 @@ impl Upstream {
         socket.connect(upstream)?;
         Ok(Upstream {
             socket: Arc::new(socket),
+            buffer: [0; 4096],
+            buf_used: 0,
         })
     }
 }
 
 impl Middleware for Upstream {
     fn submit(&mut self, metric: Metric) -> Result<(), Overloaded> {
-        self.socket
-            .send(&metric.raw)
-            .expect("failed to send to upstream");
+        let metric_len = metric.raw.len();
+        if metric_len + 1 > 4096 - self.buf_used {
+            // Message bigger than space left in buffer. Flush the buffer.
+            self.socket
+                .send(&self.buffer[..self.buf_used])
+                .expect("failed to send to upstream");
+            self.buf_used = 0;
+        }
+        if metric_len > 4096 {
+            // Message too big for the entire buffer, send it and pray.
+            self.socket
+                .send(&metric.raw)
+                .expect("failed to send to upstream");
+        }
+        else {
+            // Put the message in the buffer, separating it from the previous message if any.
+            if self.buf_used > 0 {
+                self.buffer[self.buf_used] = b'\n';
+                self.buf_used += 1;
+            }
+            self.buffer[self.buf_used..self.buf_used + metric_len].copy_from_slice(&metric.raw);
+            self.buf_used += metric_len;
+        }
         Ok(())
     }
 }
