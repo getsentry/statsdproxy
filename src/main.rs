@@ -42,7 +42,7 @@ fn main() -> Result<(), Error> {
         }
     }
 
-    let server = Server::new(args.listen, client).await?;
+    let server = Server::new(args.listen, client)?;
 
     server.run()?;
 
