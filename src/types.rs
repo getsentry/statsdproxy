@@ -114,7 +114,7 @@ mod tests {
     }
 
     #[test]
-    fn add_tags_to_none() {
+    fn add_some_tags_to_none() {
         let mut metric = Metric::new(b"users.online:1|c|@0.5".to_vec());
 
         metric.set_tags(b"country:japan");
