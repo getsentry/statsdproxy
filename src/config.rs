@@ -38,8 +38,16 @@ pub struct AllowNameConfig {
     pub name: Vec<String>,
 }
 
+#[derive(Debug, Deserialize, Eq, Hash, PartialEq)]
+pub struct LimitConfig {
+    pub window: u16, // in seconds
+    pub limit: u64,
+}
+
 #[derive(Debug, Deserialize, PartialEq)]
-pub struct CardinalityLimitConfig {}
+pub struct CardinalityLimitConfig {
+    pub limits: Vec<LimitConfig>,
+}
 
 #[cfg(test)]
 mod tests {
@@ -53,7 +61,7 @@ mod tests {
                 MiddlewareConfig::DenyTag(DenyTagConfig {
                     tags: vec!["a".to_string(), "b".to_string(), "c".to_string()],
                 }),
-                MiddlewareConfig::CardinalityLimit(CardinalityLimitConfig {}),
+                MiddlewareConfig::CardinalityLimit(CardinalityLimitConfig { limits: vec![] }),
             ],
         };
         assert_eq!(config, expected);
