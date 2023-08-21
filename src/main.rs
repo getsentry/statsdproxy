@@ -24,9 +24,27 @@ struct Args {
 async fn main() -> Result<(), Error> {
     let args = Args::parse();
 
-    let client = Upstream::new(args.upstream).await?;
+    let config = config::Config::new(&args.config_path)?;
+
+    let mut client: Box<dyn middleware::Middleware> = Box::new(Upstream::new(args.upstream).await?);
+    for middleware_config in config.middlewares.into_iter().rev() {
+        match middleware_config {
+            config::MiddlewareConfig::AllowTag(config) => {
+                client = Box::new(middleware::allow_tag::AllowTag::new(config, client));
+            }
+            config::MiddlewareConfig::DenyTag(config) => {
+                client = Box::new(middleware::deny_tag::DenyTag::new(config, client));
+            }
+            config::MiddlewareConfig::CardinalityLimit(config) => {
+                client = Box::new(middleware::cardinality_limit::CardinalityLimit::new(
+                    config, client,
+                ));
+            }
+        }
+    }
+
     let server = Server::new(args.listen, client).await?;
-    let _config = config::Config::new(&args.config_path)?;
+
     server.run().await?;
 
     Ok(())

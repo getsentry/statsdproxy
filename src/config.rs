@@ -4,7 +4,7 @@ use std::fs::File;
 
 #[derive(Debug, Deserialize, PartialEq)]
 pub struct Config {
-    middlewares: Vec<MiddlewareConfig>,
+    pub middlewares: Vec<MiddlewareConfig>,
 }
 
 impl Config {
@@ -25,12 +25,17 @@ pub enum MiddlewareConfig {
 
 #[derive(Debug, Deserialize, PartialEq)]
 pub struct DenyTagConfig {
-    tags: Vec<String>,
+    pub tags: Vec<String>,
 }
 
 #[derive(Debug, Deserialize, PartialEq)]
 pub struct AllowTagConfig {
-    tags: Vec<String>,
+    pub tags: Vec<String>,
+}
+
+#[derive(Debug, Deserialize, PartialEq)]
+pub struct AllowNameConfig {
+    pub name: Vec<String>,
 }
 
 #[derive(Debug, Deserialize, PartialEq)]
