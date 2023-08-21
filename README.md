@@ -49,3 +49,9 @@ nc -ul 8081 | pv > /dev/null
 cargo run --release -- --listen 127.0.0.1:8080 --upstream 127.0.0.1:8081
 yes 'users.online:1|c|@0.5|#country:china' | nc -u 127.0.0.1 8080
 ```
+
+Output of the first netcat command should resemble:
+
+```
+5.56GiB 0:00:46 [ 175MiB/s] [                <=>        ]
+```
