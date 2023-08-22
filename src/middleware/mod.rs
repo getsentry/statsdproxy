@@ -5,6 +5,7 @@ use anyhow::Error;
 
 use crate::types::Metric;
 
+pub mod add_tag;
 pub mod allow_tag;
 pub mod cardinality_limit;
 pub mod deny_tag;

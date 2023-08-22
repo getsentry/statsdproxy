@@ -43,6 +43,9 @@ fn main() -> Result<(), Error> {
                     config, client,
                 ));
             }
+            config::MiddlewareConfig::AddTag(config) => {
+                client = Box::new(middleware::add_tag::AddTag::new(config, client));
+            }
         }
     }
 

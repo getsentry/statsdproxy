@@ -29,15 +29,18 @@ pub struct Metric {
 pub struct MetricTag<'a> {
     // Tags are always represented as a byte array, and may have a name and value if their format matches
     // our expectations.
-    pub raw: &'a[u8],
-    pub name_value_sep_pos: Option<usize>
+    pub raw: &'a [u8],
+    pub name_value_sep_pos: Option<usize>,
 }
 
 impl<'a> MetricTag<'a> {
     pub fn new(bytes: &[u8]) -> MetricTag {
-        MetricTag { raw: bytes, name_value_sep_pos: bytes.iter().position(|&b| b == b':') }
+        MetricTag {
+            raw: bytes,
+            name_value_sep_pos: bytes.iter().position(|&b| b == b':'),
+        }
     }
-    
+
     pub fn name(&self) -> Option<&[u8]> {
         self.name_value_sep_pos.map(|i| &self.raw[..i])
     }
@@ -51,8 +54,8 @@ impl<'a> fmt::Debug for MetricTag<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.name_value_sep_pos.is_none() {
             f.debug_struct("MetricTag")
-            .field("bytes", &str::from_utf8(self.raw))
-            .finish()
+                .field("bytes", &str::from_utf8(self.raw))
+                .finish()
         } else {
             f.debug_struct("MetricTag")
                 .field("name", &str::from_utf8(self.name().unwrap()))
@@ -69,11 +72,11 @@ pub struct MetricTagIterator<'a> {
 impl<'a> Iterator for MetricTagIterator<'a> {
     type Item = MetricTag<'a>;
 
-    fn next(&mut self) -> Option<Self::Item> {        
+    fn next(&mut self) -> Option<Self::Item> {
         if self.remaining_tags.is_empty() {
             return None;
         }
-        
+
         let mut tag_pos_iter = self.remaining_tags.iter();
         let next_tag_sep_pos = tag_pos_iter.position(|&b| b == b',');
 
@@ -83,14 +86,13 @@ impl<'a> Iterator for MetricTagIterator<'a> {
             self.remaining_tags = &self.remaining_tags[tag_sep_pos + 1..];
 
             Some(tag)
-
         } else {
             // Got a tag and no more tags remain
             let tag = MetricTag::new(self.remaining_tags);
             self.remaining_tags = &[];
-            
+
             Some(tag)
-        }
+        };
     }
 }
 
@@ -120,7 +122,9 @@ impl Metric {
     pub fn tags_iter(&self) -> MetricTagIterator {
         let tags = self.tags().unwrap_or(&[]);
 
-        MetricTagIterator { remaining_tags: tags }
+        MetricTagIterator {
+            remaining_tags: tags,
+        }
     }
 
     pub fn set_tags(&mut self, tags: &[u8]) {
@@ -255,7 +259,7 @@ mod tests {
     fn tag_iter() {
         let metric =
             Metric::new(b"users.online:1|c|@0.5|#instance:foobar,ohyeah,,country:china".to_vec());
-        
+
         let mut tag_iter = metric.tags_iter();
 
         {

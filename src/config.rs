@@ -21,6 +21,7 @@ pub enum MiddlewareConfig {
     DenyTag(DenyTagConfig),
     AllowTag(AllowTagConfig),
     CardinalityLimit(CardinalityLimitConfig),
+    AddTag(AddTagConfig),
 }
 
 #[derive(Debug, Deserialize, PartialEq)]
@@ -49,6 +50,11 @@ pub struct CardinalityLimitConfig {
     pub limits: Vec<LimitConfig>,
 }
 
+#[derive(Debug, Deserialize, PartialEq)]
+pub struct AddTagConfig {
+    pub tags: Vec<String>,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -66,6 +72,9 @@ mod tests {
                         window: 3600,
                         limit: 3,
                     }],
+                }),
+                MiddlewareConfig::AddTag(AddTagConfig {
+                    tags: vec!["d".to_string(), "e:1".to_string()],
                 }),
             ],
         };

@@ -5,3 +5,5 @@ middlewares:
     limits:
       - window: 3600
         limit: 3
+  - type: add-tag
+    tags: [d, e:1]
