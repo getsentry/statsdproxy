@@ -61,7 +61,12 @@ mod tests {
                 MiddlewareConfig::DenyTag(DenyTagConfig {
                     tags: vec!["a".to_string(), "b".to_string(), "c".to_string()],
                 }),
-                MiddlewareConfig::CardinalityLimit(CardinalityLimitConfig { limits: vec![] }),
+                MiddlewareConfig::CardinalityLimit(CardinalityLimitConfig {
+                    limits: vec![LimitConfig {
+                        window: 3600,
+                        limit: 3,
+                    }],
+                }),
             ],
         };
         assert_eq!(config, expected);

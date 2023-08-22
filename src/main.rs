@@ -4,6 +4,10 @@ use clap::Parser;
 mod config;
 mod middleware;
 mod types;
+
+#[cfg(test)]
+mod testutils;
+
 use middleware::{Server, Upstream};
 
 #[derive(Parser, Debug)]

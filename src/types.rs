@@ -14,6 +14,7 @@
 /// ```text
 /// <METRIC_NAME>:<VALUE>|<TYPE>|@<SAMPLE_RATE>|#<TAG_KEY_1>:<TAG_VALUE_1>,<TAG_2>
 /// ```
+#[derive(Debug)]
 pub struct Metric {
     // TODO: use global arena to allocate strings?
     //
