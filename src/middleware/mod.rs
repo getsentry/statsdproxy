@@ -112,7 +112,7 @@ where
                 }
 
                 let raw = raw.to_owned();
-                let metric = Metric { raw };
+                let metric = Metric::new(raw);
 
                 let mut carryover_metric = Some(metric);
                 while let Some(metric) = carryover_metric.take() {
