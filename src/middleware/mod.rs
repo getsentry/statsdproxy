@@ -1,4 +1,5 @@
 use std::net::UdpSocket;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
 use anyhow::Error;
@@ -56,6 +57,27 @@ impl Upstream {
             buf_used: 0,
         })
     }
+
+    pub fn flush(&mut self) {
+        let bytes = self
+            .socket
+            .send(&self.buffer[..self.buf_used])
+            .expect("failed to send to upstream");
+        if bytes != self.buf_used {
+            // UDP, so this should never happen, but...
+            panic!(
+                "tried to send {} bytes but only sent {}.",
+                self.buf_used, bytes
+            );
+        }
+        self.buf_used = 0;
+    }
+}
+
+impl Drop for Upstream {
+    fn drop(&mut self) {
+        self.flush();
+    }
 }
 
 impl Middleware for Upstream {
@@ -63,18 +85,7 @@ impl Middleware for Upstream {
         let metric_len = metric.raw.len();
         if metric_len + 1 > BUFSIZE - self.buf_used {
             // Message bigger than space left in buffer. Flush the buffer.
-            let bytes = self
-                .socket
-                .send(&self.buffer[..self.buf_used])
-                .expect("failed to send to upstream");
-            if bytes != self.buf_used {
-                // UDP, so this should never happen, but...
-                panic!(
-                    "tried to send {} bytes but only sent {}.",
-                    self.buf_used, bytes
-                );
-            }
-            self.buf_used = 0;
+            self.flush();
         }
         if metric_len > BUFSIZE {
             // Message too big for the entire buffer, send it and pray.
@@ -121,7 +132,11 @@ where
         // one that breaks that setup.
         let mut buf = [0; 65535];
 
-        loop {
+        let stop = Arc::new(AtomicBool::new(false));
+        signal_hook::flag::register(signal_hook::consts::SIGTERM, Arc::clone(&stop))?;
+        signal_hook::flag::register(signal_hook::consts::SIGINT, Arc::clone(&stop))?;
+
+        while !stop.load(Ordering::Relaxed) {
             let (num_bytes, _app_socket) = self.socket.recv_from(buf.as_mut_slice())?;
             for raw in buf[..num_bytes].split(|&x| x == b'\n') {
                 if raw.is_empty() {
@@ -141,5 +156,6 @@ where
                 }
             }
         }
+        Ok(())
     }
 }
