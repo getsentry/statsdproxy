@@ -88,10 +88,10 @@ impl From<LimitConfig> for Quota {
     fn from(config: LimitConfig) -> Self {
         let granularity = match config.window {
             // 5 minutes -> second granularity
-            ..=300 => 1,
+            0..=300 => 1,
 
             // 30 minutes -> minute granularity
-            ..=1800 => 60,
+            301..=1800 => 60,
 
             // anything else -> hourly granularity
             _ => 3600,
@@ -200,32 +200,24 @@ mod tests {
         let mut limiter = CardinalityLimit::new(config, next);
 
         limiter
-            .submit(Metric::new(
-                b"users.online:1|c|#country:china".to_vec(),
-            ))
+            .submit(Metric::new(b"users.online:1|c|#country:china".to_vec()))
             .unwrap();
         assert_eq!(results.borrow_mut().len(), 1);
 
         limiter
-            .submit(Metric::new(
-                b"servers.online:1|c|#country:china".to_vec(),
-            ))
+            .submit(Metric::new(b"servers.online:1|c|#country:china".to_vec()))
             .unwrap();
         assert_eq!(results.borrow_mut().len(), 2);
 
         // we have already ingested two distinct timeseries, this one should be dropped.
         limiter
-            .submit(Metric::new(
-                b"servers.online:1|c|#country:japan".to_vec(),
-            ))
+            .submit(Metric::new(b"servers.online:1|c|#country:japan".to_vec()))
             .unwrap();
         assert_eq!(results.borrow_mut().len(), 2);
 
         // A metric with the same hash as an old one within `window` should pass through.
         limiter
-            .submit(Metric::new(
-                b"users.online:1|c|#country:china".to_vec(),
-            ))
+            .submit(Metric::new(b"users.online:1|c|#country:china".to_vec()))
             .unwrap();
         assert_eq!(results.borrow_mut().len(), 3);
     }
