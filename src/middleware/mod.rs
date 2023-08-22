@@ -11,6 +11,7 @@ pub mod deny_tag;
 
 const BUFSIZE: usize = 4096;
 
+#[derive(Debug)]
 pub struct Overloaded {
     pub metric: Metric,
 }
