@@ -6,8 +6,8 @@ use anyhow::Error;
 use crate::types::Metric;
 
 pub mod allow_tag;
-pub mod deny_tag;
 pub mod cardinality_limit;
+pub mod deny_tag;
 
 pub struct Overloaded {
     pub metric: Metric,
@@ -24,7 +24,6 @@ impl Middleware for Box<dyn Middleware> {
         self.as_mut().submit(metric)
     }
 }
-
 
 pub trait Middleware {
     fn join(&mut self) -> Result<(), Error> {
@@ -71,8 +70,7 @@ impl Middleware for Upstream {
             self.socket
                 .send(&metric.raw)
                 .expect("failed to send to upstream");
-        }
-        else {
+        } else {
             // Put the message in the buffer, separating it from the previous message if any.
             if self.buf_used > 0 {
                 self.buffer[self.buf_used] = b'\n';
