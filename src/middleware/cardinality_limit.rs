@@ -126,11 +126,9 @@ where
     fn hash_metric(&self, metric: &Metric) -> u32 {
         let mut hasher = Hasher::new();
         if let Some(name) = metric.name() {
-            println!("hashing name: {name:?}");
             hasher.update(name);
         }
         if let Some(tags) = metric.tags() {
-            println!("hashing tags: {tags:?}");
             hasher.update(tags);
         }
         hasher.finalize()
