@@ -45,15 +45,7 @@ where
 
         if rewrite_tags {
             let mut rewriten_metric = metric.clone();
-            let tag_bytes = tags_to_keep.iter().map(|t| t.raw);
-            
-            let mut tag_buffer = Vec::new();
-            for t in tag_bytes {
-                tag_buffer.extend(t);
-                
-                tag_buffer.push(b',');
-            }
-            rewriten_metric.set_tags(&tag_buffer[0..tag_buffer.len() - 1]); // omit trailing ',' from loop above
+            rewriten_metric.set_tags_from_iter(tags_to_keep.iter());
             self.next.submit(rewriten_metric)
         } else {
             self.next.submit(metric)

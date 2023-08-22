@@ -147,6 +147,16 @@ impl Metric {
             }
         }
     }
+
+    pub fn set_tags_from_iter<'a, M: Iterator<Item=&'a MetricTag<'a>>>(&mut self, tag_iter: M) {
+        let tag_bytes = tag_iter.map(|t| t.raw);
+        let mut tag_buffer = Vec::new();
+        for t in tag_bytes {
+            tag_buffer.extend(t);
+            tag_buffer.push(b',');
+        }
+        self.set_tags(&tag_buffer[0..tag_buffer.len() - 1]); // omit trailing ',' from loop above
+    }
 }
 
 #[cfg(test)]
