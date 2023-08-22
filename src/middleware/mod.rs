@@ -133,8 +133,9 @@ where
         let mut buf = [0; 65535];
 
         let stop = Arc::new(AtomicBool::new(false));
-        signal_hook::flag::register(signal_hook::consts::SIGTERM, Arc::clone(&stop))?;
+        signal_hook::flag::register(signal_hook::consts::SIGHUP, Arc::clone(&stop))?;
         signal_hook::flag::register(signal_hook::consts::SIGINT, Arc::clone(&stop))?;
+        signal_hook::flag::register(signal_hook::consts::SIGTERM, Arc::clone(&stop))?;
 
         while !stop.load(Ordering::Relaxed) {
             let (num_bytes, _app_socket) = self.socket.recv_from(buf.as_mut_slice())?;
