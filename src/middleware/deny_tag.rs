@@ -4,14 +4,18 @@ use crate::types::Metric;
 use anyhow::Error;
 use std::collections::HashSet;
 
-pub struct DenyTag {
+
+pub struct DenyTag<M> {
     #[allow(dead_code)]
     tags: HashSet<Vec<u8>>,
-    next: Box<dyn Middleware>,
+    next: M,
 }
 
-impl DenyTag {
-    pub fn new(config: DenyTagConfig, next: Box<dyn Middleware>) -> Self {
+impl<M> DenyTag<M>
+where
+    M: Middleware
+{
+    pub fn new(config: DenyTagConfig, next: M) -> Self {
         let tags: HashSet<Vec<u8>> =
             HashSet::from_iter(config.tags.iter().cloned().map(|tag| tag.into_bytes()));
 
@@ -19,7 +23,10 @@ impl DenyTag {
     }
 }
 
-impl Middleware for DenyTag {
+impl<M> Middleware for DenyTag<M>
+where
+    M: Middleware
+{
     fn poll(&mut self) -> Result<(), Error> {
         self.next.poll()
     }
@@ -47,7 +54,6 @@ impl Middleware for DenyTag {
                 tag_buffer.push(b',');
             }
             rewriten_metric.set_tags(&tag_buffer[0..tag_buffer.len() - 1]); // omit trailing ',' from loop above
-
             self.next.submit(rewriten_metric)
         } else {
             self.next.submit(metric)
@@ -56,5 +62,37 @@ impl Middleware for DenyTag {
 
     fn join(&mut self) -> Result<(), Error> {
         self.next.join()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::cell::RefCell;
+
+    use super::*;
+    use crate::testutils::FnStep;
+
+    #[test]
+    fn basic() {
+        let config = DenyTagConfig {
+            tags: vec!["nope".to_string()],
+        };
+
+        let results = RefCell::new(vec![]);
+        let next = FnStep(|metric| {
+            results.borrow_mut().push(metric);
+            Ok(())
+        });
+        let mut tag_denier = DenyTag::new(config, next);
+
+        tag_denier
+            .submit(Metric::new(b"servers.online:1|c|#country:china,nope:foo".to_vec()))
+            .unwrap();
+        assert_eq!(results.borrow()[0], Metric::new(b"servers.online:1|c|#country:china".to_vec()));
+
+        tag_denier
+            .submit(Metric::new(b"servers.online:1|c|#country:china,nope:foo,extra_stuff,,".to_vec()))
+            .unwrap();
+        assert_eq!(results.borrow()[1], Metric::new(b"servers.online:1|c|#country:china,extra_stuff,,".to_vec()));
     }
 }
