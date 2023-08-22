@@ -9,6 +9,8 @@ pub mod allow_tag;
 pub mod cardinality_limit;
 pub mod deny_tag;
 
+const BUFSIZE: usize = 4096;
+
 pub struct Overloaded {
     pub metric: Metric,
 }
@@ -37,7 +39,7 @@ pub trait Middleware {
 
 pub struct Upstream {
     socket: Arc<UdpSocket>,
-    buffer: [u8; 4096],
+    buffer: [u8; BUFSIZE],
     buf_used: usize,
 }
 
@@ -49,7 +51,7 @@ impl Upstream {
         socket.connect(upstream)?;
         Ok(Upstream {
             socket: Arc::new(socket),
-            buffer: [0; 4096],
+            buffer: [0; BUFSIZE],
             buf_used: 0,
         })
     }
@@ -58,14 +60,14 @@ impl Upstream {
 impl Middleware for Upstream {
     fn submit(&mut self, metric: Metric) -> Result<(), Overloaded> {
         let metric_len = metric.raw.len();
-        if metric_len + 1 > 4096 - self.buf_used {
+        if metric_len + 1 > BUFSIZE - self.buf_used {
             // Message bigger than space left in buffer. Flush the buffer.
             self.socket
                 .send(&self.buffer[..self.buf_used])
                 .expect("failed to send to upstream");
             self.buf_used = 0;
         }
-        if metric_len > 4096 {
+        if metric_len > BUFSIZE {
             // Message too big for the entire buffer, send it and pray.
             self.socket
                 .send(&metric.raw)
