@@ -17,7 +17,7 @@ use std::str;
 /// ```text
 /// <METRIC_NAME>:<VALUE>|<TYPE>|@<SAMPLE_RATE>|#<TAG_KEY_1>:<TAG_VALUE_1>,<TAG_2>
 /// ```
-#[derive(Clone, Debug)]
+#[derive(Clone, PartialEq)]
 pub struct Metric {
     // TODO: use global arena to allocate strings?
     //
@@ -25,22 +25,27 @@ pub struct Metric {
     tags_pos: Option<(usize, usize)>,
 }
 
+impl fmt::Debug for Metric {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Metric")
+            .field("raw", &str::from_utf8(&self.raw))
+            .finish()
+    }
+}
+
 #[derive(PartialEq)]
 pub struct MetricTag<'a> {
     // Tags are always represented as a byte array, and may have a name and value if their format matches
     // our expectations.
-    pub raw: &'a [u8],
-    pub name_value_sep_pos: Option<usize>,
+    pub raw: &'a[u8],
+    pub name_value_sep_pos: Option<usize>
 }
 
 impl<'a> MetricTag<'a> {
     pub fn new(bytes: &[u8]) -> MetricTag {
-        MetricTag {
-            raw: bytes,
-            name_value_sep_pos: bytes.iter().position(|&b| b == b':'),
-        }
+        MetricTag { raw: bytes, name_value_sep_pos: bytes.iter().position(|&b| b == b':') }
     }
-
+    
     pub fn name(&self) -> Option<&[u8]> {
         self.name_value_sep_pos.map(|i| &self.raw[..i])
     }
@@ -54,8 +59,8 @@ impl<'a> fmt::Debug for MetricTag<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.name_value_sep_pos.is_none() {
             f.debug_struct("MetricTag")
-                .field("bytes", &str::from_utf8(self.raw))
-                .finish()
+            .field("bytes", &str::from_utf8(self.raw))
+            .finish()
         } else {
             f.debug_struct("MetricTag")
                 .field("name", &str::from_utf8(self.name().unwrap()))
@@ -66,33 +71,31 @@ impl<'a> fmt::Debug for MetricTag<'a> {
 }
 
 pub struct MetricTagIterator<'a> {
-    pub remaining_tags: &'a [u8],
+    pub remaining_tags: Option<&'a [u8]>,
 }
 
 impl<'a> Iterator for MetricTagIterator<'a> {
     type Item = MetricTag<'a>;
 
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.remaining_tags.is_empty() {
-            return None;
-        }
-
-        let mut tag_pos_iter = self.remaining_tags.iter();
+    fn next(&mut self) -> Option<Self::Item> {        
+        let remaining_tags = self.remaining_tags?;
+        let mut tag_pos_iter = remaining_tags.iter();
         let next_tag_sep_pos = tag_pos_iter.position(|&b| b == b',');
 
         return if let Some(tag_sep_pos) = next_tag_sep_pos {
             // Got a tag and more tags remain
-            let tag = MetricTag::new(&self.remaining_tags[..tag_sep_pos]);
-            self.remaining_tags = &self.remaining_tags[tag_sep_pos + 1..];
+            let tag = MetricTag::new(&remaining_tags[..tag_sep_pos]);
+            self.remaining_tags = Some(&remaining_tags[tag_sep_pos + 1..]);
 
             Some(tag)
+
         } else {
             // Got a tag and no more tags remain
-            let tag = MetricTag::new(self.remaining_tags);
-            self.remaining_tags = &[];
-
+            let tag = MetricTag::new(remaining_tags);
+            self.remaining_tags = None;
+            
             Some(tag)
-        };
+        }
     }
 }
 
@@ -120,11 +123,7 @@ impl Metric {
     }
 
     pub fn tags_iter(&self) -> MetricTagIterator {
-        let tags = self.tags().unwrap_or(&[]);
-
-        MetricTagIterator {
-            remaining_tags: tags,
-        }
+        MetricTagIterator { remaining_tags: self.tags() }
     }
 
     pub fn set_tags(&mut self, tags: &[u8]) {
@@ -158,6 +157,7 @@ mod tests {
     fn none_tags() {
         let metric = Metric::new(b"users.online:1|c|@0.5".to_vec());
         assert_eq!(metric.tags(), None);
+        assert_eq!(metric.tags_iter().collect::<Vec<MetricTag>>(), []);
         assert_eq!(metric.name().unwrap(), b"users.online");
         assert_eq!(metric.raw, b"users.online:1|c|@0.5");
     }
@@ -258,8 +258,8 @@ mod tests {
     #[test]
     fn tag_iter() {
         let metric =
-            Metric::new(b"users.online:1|c|@0.5|#instance:foobar,ohyeah,,country:china".to_vec());
-
+            Metric::new(b"users.online:1|c|@0.5|#instance:foobar,ohyeah,,country:china,".to_vec());
+        
         let mut tag_iter = metric.tags_iter();
 
         {
@@ -289,5 +289,14 @@ mod tests {
             assert_eq!(fourth.value(), Some(b"china".as_slice()));
             assert_eq!(fourth.raw, b"country:china".as_slice());
         }
+
+        {
+            let fifth = tag_iter.next().unwrap();
+            assert_eq!(fifth.name(), None);
+            assert_eq!(fifth.value(), None);
+            assert_eq!(fifth.raw, b"".as_slice());
+        }
+
+        assert_eq!(tag_iter.next(), None);
     }
 }
