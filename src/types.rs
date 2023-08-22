@@ -1,4 +1,7 @@
 #![allow(dead_code)]
+
+use std::fmt;
+use std::str;
 /// A dogstatsd metric is stored internally as the original line of bytes that went over UDP.
 ///
 /// Parsing methods are added as needed, and they operate lazily.
@@ -14,12 +17,97 @@
 /// ```text
 /// <METRIC_NAME>:<VALUE>|<TYPE>|@<SAMPLE_RATE>|#<TAG_KEY_1>:<TAG_VALUE_1>,<TAG_2>
 /// ```
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Metric {
     // TODO: use global arena to allocate strings?
     //
     pub raw: Vec<u8>,
     tags_pos: Option<(usize, usize)>,
+}
+
+#[derive(PartialEq)]
+pub struct MetricTag<'a> {
+    pub name: &'a[u8],
+    pub value: &'a[u8],
+}
+
+impl<'a> MetricTag<'a> {
+    pub fn new(bytes: &[u8]) -> MetricTag {
+        let parts: Vec<&[u8]> = bytes.split(|&b| b == b':').collect();
+        assert!(parts.len() == 2);
+
+        MetricTag { name: parts[0], value: parts[1] }
+    }
+    
+    pub fn to_bytes(&self) -> Vec<u8> {
+        let mut bytes = Vec::new();
+        bytes.extend(self.name);
+        bytes.push(b':');
+        bytes.extend(self.value);
+
+        bytes
+    }
+}
+
+impl<'a> fmt::Debug for MetricTag<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("MetricTag")
+            .field("name", &str::from_utf8(self.name))
+            .field("value", &str::from_utf8(self.value))
+            .finish()
+    }
+}
+
+pub struct MetricTagIterator<'a> {
+    pub metric: &'a Metric,
+    pub next_tag_pos: Option<usize>,
+}
+
+impl<'a> Iterator for MetricTagIterator<'a> {
+    type Item = MetricTag<'a>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.next_tag_pos.is_none() {
+            return None;
+        }
+        
+        let next_tag_pos = self.next_tag_pos.unwrap();
+        let mut tag_pos_iter = self.metric.raw[next_tag_pos..].iter();
+
+        let next_name_value_sep_pos = tag_pos_iter.position(|&b| b == b':');
+        let next_metric_sep_pos = tag_pos_iter.position(|&b| b == b',');
+
+        return match (next_name_value_sep_pos, next_metric_sep_pos) {
+            // Got a tag and more tags remain
+            (Some(x), Some(y)) => {
+                let tag = MetricTag {
+                    name: &self.metric.raw[next_tag_pos..next_tag_pos + x], 
+                    value: &self.metric.raw[next_tag_pos + x + 1..next_tag_pos + x + y + 1] };
+                
+                // In total, consumed two separator characters plus the characters for the name and value,
+                // so advance the pointer by that amount.
+                self.next_tag_pos = Some(next_tag_pos + x + y + 2);
+                
+                Some(tag)
+            }
+            
+            // Got a tag and no more tags remain
+            (Some(x), None) => {
+                let tag = MetricTag  {
+                    name: &self.metric.raw[next_tag_pos..next_tag_pos + x],
+                    value: &self.metric.raw[next_tag_pos + x + 1..]
+                };
+                self.next_tag_pos = None;
+
+                Some(tag)
+            }
+            
+            // No more tags
+            (None, ..) => {
+                None
+            }
+        }
+    }
 }
 
 impl Metric {
@@ -43,6 +131,10 @@ impl Metric {
 
     pub fn tags(&self) -> Option<&[u8]> {
         self.tags_pos.map(|(i, j)| &self.raw[i..j])
+    }
+
+    pub fn tags_iter(&self) -> MetricTagIterator {
+        MetricTagIterator { metric: &self, next_tag_pos: self.tags_start_pos() }
     }
 
     pub fn set_tags(&mut self, tags: &[u8]) {
@@ -171,5 +263,17 @@ mod tests {
             metric.raw,
             b"users.online:1|c|@0.5|#country:japan|T1692653389"
         );
+    }
+
+    #[test]
+    fn tag_iter() {
+        let metric =
+            Metric::new(b"users.online:1|c|@0.5|#instance:foobar,country:china".to_vec());
+        
+        let mut tag_iter = metric.tags_iter();
+
+        assert_eq!(tag_iter.next(), Some(MetricTag { name: b"instance".as_slice(), value: b"foobar".as_slice() }));
+        assert_eq!(tag_iter.next(), Some(MetricTag { name: b"country".as_slice(), value: b"china".as_slice() }));
+        assert_eq!(tag_iter.next(), None);
     }
 }

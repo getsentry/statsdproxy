@@ -25,7 +25,33 @@ impl Middleware for AllowTag {
     }
 
     fn submit(&mut self, metric: Metric) -> Result<(), Overloaded> {
-        self.next.submit(metric)
+        let mut tags_to_keep = Vec::new();
+        let mut rewrite_tags = false;
+
+        for tag in metric.tags_iter() {
+            if self.tags.contains(tag.name) {
+                rewrite_tags = true;
+            } else {
+                tags_to_keep.push(tag);
+            }
+        }
+
+        if rewrite_tags {
+            let mut rewriten_metric = metric.clone();
+            let tag_bytes = tags_to_keep.iter().map(|t| t.to_bytes());
+            
+            let mut tag_buffer = Vec::new();
+            for t in tag_bytes {
+                tag_buffer.extend(t);
+                
+                tag_buffer.push(b',');
+            }
+            rewriten_metric.set_tags(&tag_buffer[0..tag_buffer.len() - 1]); // omit trailing ',' from loop above
+
+            self.next.submit(rewriten_metric)
+        } else {
+            self.next.submit(metric)
+        }
     }
 
     fn join(&mut self) -> Result<(), Error> {
