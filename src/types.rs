@@ -27,85 +27,69 @@ pub struct Metric {
 
 #[derive(PartialEq)]
 pub struct MetricTag<'a> {
-    pub name: &'a[u8],
-    pub value: &'a[u8],
+    // Tags are always represented as a byte array, and may have a name and value if their format matches
+    // our expectations.
+    pub raw: &'a[u8],
+    pub name_value_sep_pos: Option<usize>
 }
 
 impl<'a> MetricTag<'a> {
     pub fn new(bytes: &[u8]) -> MetricTag {
-        let parts: Vec<&[u8]> = bytes.split(|&b| b == b':').collect();
-        assert!(parts.len() == 2);
-
-        MetricTag { name: parts[0], value: parts[1] }
+        MetricTag { raw: bytes, name_value_sep_pos: bytes.iter().position(|&b| b == b':') }
     }
     
-    pub fn to_bytes(&self) -> Vec<u8> {
-        let mut bytes = Vec::new();
-        bytes.extend(self.name);
-        bytes.push(b':');
-        bytes.extend(self.value);
+    pub fn name(&self) -> Option<&[u8]> {
+        self.name_value_sep_pos.map(|i| &self.raw[..i])
+    }
 
-        bytes
+    pub fn value(&self) -> Option<&[u8]> {
+        self.name_value_sep_pos.map(|i| &self.raw[i + 1..])
     }
 }
 
 impl<'a> fmt::Debug for MetricTag<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("MetricTag")
-            .field("name", &str::from_utf8(self.name))
-            .field("value", &str::from_utf8(self.value))
+        if self.name_value_sep_pos.is_none() {
+            f.debug_struct("MetricTag")
+            .field("bytes", &str::from_utf8(self.raw))
             .finish()
+        } else {
+            f.debug_struct("MetricTag")
+                .field("name", &str::from_utf8(self.name().unwrap()))
+                .field("value", &str::from_utf8(self.value().unwrap()))
+                .finish()
+        }
     }
 }
 
 pub struct MetricTagIterator<'a> {
-    pub metric: &'a Metric,
-    pub next_tag_pos: Option<usize>,
+    pub remaining_tags: &'a [u8],
 }
 
 impl<'a> Iterator for MetricTagIterator<'a> {
     type Item = MetricTag<'a>;
 
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.next_tag_pos.is_none() {
+    fn next(&mut self) -> Option<Self::Item> {        
+        if self.remaining_tags.is_empty() {
             return None;
         }
         
-        let next_tag_pos = self.next_tag_pos.unwrap();
-        let mut tag_pos_iter = self.metric.raw[next_tag_pos..].iter();
+        let mut tag_pos_iter = self.remaining_tags.iter();
+        let next_tag_sep_pos = tag_pos_iter.position(|&b| b == b',');
 
-        let next_name_value_sep_pos = tag_pos_iter.position(|&b| b == b':');
-        let next_metric_sep_pos = tag_pos_iter.position(|&b| b == b',');
-
-        return match (next_name_value_sep_pos, next_metric_sep_pos) {
+        return if let Some(tag_sep_pos) = next_tag_sep_pos {
             // Got a tag and more tags remain
-            (Some(x), Some(y)) => {
-                let tag = MetricTag {
-                    name: &self.metric.raw[next_tag_pos..next_tag_pos + x], 
-                    value: &self.metric.raw[next_tag_pos + x + 1..next_tag_pos + x + y + 1] };
-                
-                // In total, consumed two separator characters plus the characters for the name and value,
-                // so advance the pointer by that amount.
-                self.next_tag_pos = Some(next_tag_pos + x + y + 2);
-                
-                Some(tag)
-            }
-            
-            // Got a tag and no more tags remain
-            (Some(x), None) => {
-                let tag = MetricTag  {
-                    name: &self.metric.raw[next_tag_pos..next_tag_pos + x],
-                    value: &self.metric.raw[next_tag_pos + x + 1..]
-                };
-                self.next_tag_pos = None;
+            let tag = MetricTag::new(&self.remaining_tags[..tag_sep_pos]);
+            self.remaining_tags = &self.remaining_tags[tag_sep_pos + 1..];
 
-                Some(tag)
-            }
+            Some(tag)
+
+        } else {
+            // Got a tag and no more tags remain
+            let tag = MetricTag::new(self.remaining_tags);
+            self.remaining_tags = &[];
             
-            // No more tags
-            (None, ..) => {
-                None
-            }
+            Some(tag)
         }
     }
 }
@@ -134,7 +118,9 @@ impl Metric {
     }
 
     pub fn tags_iter(&self) -> MetricTagIterator {
-        MetricTagIterator { metric: &self, next_tag_pos: self.tags_start_pos() }
+        let tags = self.tags().unwrap_or(&[]);
+
+        MetricTagIterator { remaining_tags: tags }
     }
 
     pub fn set_tags(&mut self, tags: &[u8]) {
@@ -268,12 +254,36 @@ mod tests {
     #[test]
     fn tag_iter() {
         let metric =
-            Metric::new(b"users.online:1|c|@0.5|#instance:foobar,country:china".to_vec());
+            Metric::new(b"users.online:1|c|@0.5|#instance:foobar,ohyeah,,country:china".to_vec());
         
         let mut tag_iter = metric.tags_iter();
 
-        assert_eq!(tag_iter.next(), Some(MetricTag { name: b"instance".as_slice(), value: b"foobar".as_slice() }));
-        assert_eq!(tag_iter.next(), Some(MetricTag { name: b"country".as_slice(), value: b"china".as_slice() }));
-        assert_eq!(tag_iter.next(), None);
+        {
+            let first = tag_iter.next().unwrap();
+            assert_eq!(first.name(), Some(b"instance".as_slice()));
+            assert_eq!(first.value(), Some(b"foobar".as_slice()));
+            assert_eq!(first.raw, b"instance:foobar".as_slice());
+        }
+
+        {
+            let second = tag_iter.next().unwrap();
+            assert_eq!(second.name(), None);
+            assert_eq!(second.value(), None);
+            assert_eq!(second.raw, b"ohyeah".as_slice());
+        }
+
+        {
+            let third = tag_iter.next().unwrap();
+            assert_eq!(third.name(), None);
+            assert_eq!(third.value(), None);
+            assert_eq!(third.raw, b"".as_slice());
+        }
+
+        {
+            let fourth = tag_iter.next().unwrap();
+            assert_eq!(fourth.name(), Some(b"country".as_slice()));
+            assert_eq!(fourth.value(), Some(b"china".as_slice()));
+            assert_eq!(fourth.raw, b"country:china".as_slice());
+        }
     }
 }

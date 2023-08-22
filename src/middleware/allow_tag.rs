@@ -29,7 +29,7 @@ impl Middleware for AllowTag {
         let mut rewrite_tags = false;
 
         for tag in metric.tags_iter() {
-            if self.tags.contains(tag.name) {
+            if tag.name().is_some_and(|t| self.tags.contains(t)) {
                 rewrite_tags = true;
             } else {
                 tags_to_keep.push(tag);
@@ -38,7 +38,7 @@ impl Middleware for AllowTag {
 
         if rewrite_tags {
             let mut rewriten_metric = metric.clone();
-            let tag_bytes = tags_to_keep.iter().map(|t| t.to_bytes());
+            let tag_bytes = tags_to_keep.iter().map(|t| t.raw);
             
             let mut tag_buffer = Vec::new();
             for t in tag_bytes {
