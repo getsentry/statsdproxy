@@ -23,6 +23,7 @@ pub enum MiddlewareConfig {
     CardinalityLimit(CardinalityLimitConfig),
     AggregateMetrics(AggregateMetricsConfig),
     AddTag(AddTagConfig),
+    TagCardinalityLimit(TagCardinalityLimitConfig),
 }
 
 #[derive(Debug, Deserialize, PartialEq)]
@@ -44,6 +45,17 @@ pub struct LimitConfig {
 #[derive(Debug, Deserialize, PartialEq)]
 pub struct CardinalityLimitConfig {
     pub limits: Vec<LimitConfig>,
+}
+
+#[derive(Debug, Deserialize, Eq, Hash, PartialEq)]
+pub struct TagLimitConfig {
+    pub tag: String,
+    pub limit: u64,
+}
+
+#[derive(Debug, Deserialize, PartialEq)]
+pub struct TagCardinalityLimitConfig {
+    pub limits: Vec<TagLimitConfig>,
 }
 
 #[derive(Debug, Deserialize, PartialEq)]
