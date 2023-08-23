@@ -12,7 +12,7 @@ pub struct AllowTag<M> {
 
 impl<M> AllowTag<M>
 where
-    M: Middleware
+    M: Middleware,
 {
     pub fn new(config: AllowTagConfig, next: M) -> Self {
         let tags: HashSet<Vec<u8>> =
@@ -24,9 +24,9 @@ where
 
 impl<M> Middleware for AllowTag<M>
 where
-    M: Middleware
+    M: Middleware,
 {
-    fn poll(&mut self) -> Result<(), Error> {
+    fn poll(&mut self) -> Result<(), Overloaded> {
         self.next.poll()
     }
 
@@ -40,7 +40,7 @@ where
                 rewrite_tags = true;
             }
         }
-        
+
         if rewrite_tags {
             let mut rewriten_metric = metric.clone();
             rewriten_metric.set_tags_from_iter(tags_to_keep.iter());
@@ -76,13 +76,21 @@ mod tests {
         let mut tag_allower = AllowTag::new(config, next);
 
         tag_allower
-            .submit(Metric::new(b"servers.online:1|c|#country:china,arch:arm64".to_vec()))
+            .submit(Metric::new(
+                b"servers.online:1|c|#country:china,arch:arm64".to_vec(),
+            ))
             .unwrap();
-        assert_eq!(results.borrow()[0], Metric::new(b"servers.online:1|c|#country:china,arch:arm64".to_vec()));
+        assert_eq!(
+            results.borrow()[0],
+            Metric::new(b"servers.online:1|c|#country:china,arch:arm64".to_vec())
+        );
 
         tag_allower
             .submit(Metric::new(b"servers.online:1|c|#machine_type:large,country:china,zone:a,arch:arm64,region:east".to_vec()))
             .unwrap();
-        assert_eq!(results.borrow()[1], Metric::new(b"servers.online:1|c|#country:china,arch:arm64".to_vec()));
+        assert_eq!(
+            results.borrow()[1],
+            Metric::new(b"servers.online:1|c|#country:china,arch:arm64".to_vec())
+        );
     }
 }

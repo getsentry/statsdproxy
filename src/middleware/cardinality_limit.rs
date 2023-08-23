@@ -139,7 +139,7 @@ impl<M> Middleware for CardinalityLimit<M>
 where
     M: Middleware,
 {
-    fn poll(&mut self) -> Result<(), Error> {
+    fn poll(&mut self) -> Result<(), Overloaded> {
         self.next.poll()
     }
 

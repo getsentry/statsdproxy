@@ -4,7 +4,6 @@ use crate::types::Metric;
 use anyhow::Error;
 use std::collections::HashSet;
 
-
 pub struct DenyTag<M> {
     #[allow(dead_code)]
     tags: HashSet<Vec<u8>>,
@@ -13,7 +12,7 @@ pub struct DenyTag<M> {
 
 impl<M> DenyTag<M>
 where
-    M: Middleware
+    M: Middleware,
 {
     pub fn new(config: DenyTagConfig, next: M) -> Self {
         let tags: HashSet<Vec<u8>> =
@@ -25,9 +24,9 @@ where
 
 impl<M> Middleware for DenyTag<M>
 where
-    M: Middleware
+    M: Middleware,
 {
-    fn poll(&mut self) -> Result<(), Error> {
+    fn poll(&mut self) -> Result<(), Overloaded> {
         self.next.poll()
     }
 
@@ -78,13 +77,23 @@ mod tests {
         let mut tag_denier = DenyTag::new(config, next);
 
         tag_denier
-            .submit(Metric::new(b"servers.online:1|c|#country:china,nope:foo".to_vec()))
+            .submit(Metric::new(
+                b"servers.online:1|c|#country:china,nope:foo".to_vec(),
+            ))
             .unwrap();
-        assert_eq!(results.borrow()[0], Metric::new(b"servers.online:1|c|#country:china".to_vec()));
+        assert_eq!(
+            results.borrow()[0],
+            Metric::new(b"servers.online:1|c|#country:china".to_vec())
+        );
 
         tag_denier
-            .submit(Metric::new(b"servers.online:1|c|#country:china,nope:foo,extra_stuff,,".to_vec()))
+            .submit(Metric::new(
+                b"servers.online:1|c|#country:china,nope:foo,extra_stuff,,".to_vec(),
+            ))
             .unwrap();
-        assert_eq!(results.borrow()[1], Metric::new(b"servers.online:1|c|#country:china,extra_stuff,,".to_vec()));
+        assert_eq!(
+            results.borrow()[1],
+            Metric::new(b"servers.online:1|c|#country:china,extra_stuff,,".to_vec())
+        );
     }
 }
