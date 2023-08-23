@@ -49,8 +49,10 @@ impl<'a> MetricTag<'a> {
         }
     }
 
-    pub fn name(&self) -> Option<&[u8]> {
-        self.name_value_sep_pos.map(|i| &self.raw[..i])
+    pub fn name(&self) -> &[u8] {
+        self.name_value_sep_pos
+            .map(|i| &self.raw[..i])
+            .unwrap_or(self.raw)
     }
 
     pub fn value(&self) -> Option<&[u8]> {
@@ -66,7 +68,7 @@ impl<'a> fmt::Debug for MetricTag<'a> {
                 .finish()
         } else {
             f.debug_struct("MetricTag")
-                .field("name", &str::from_utf8(self.name().unwrap()))
+                .field("name", &str::from_utf8(self.name()))
                 .field("value", &str::from_utf8(self.value().unwrap()))
                 .finish()
         }
@@ -291,35 +293,35 @@ mod tests {
 
         {
             let first = tag_iter.next().unwrap();
-            assert_eq!(first.name(), Some(b"instance".as_slice()));
+            assert_eq!(first.name(), b"instance".as_slice());
             assert_eq!(first.value(), Some(b"foobar".as_slice()));
             assert_eq!(first.raw, b"instance:foobar".as_slice());
         }
 
         {
             let second = tag_iter.next().unwrap();
-            assert_eq!(second.name(), None);
+            assert_eq!(second.name(), b"ohyeah");
             assert_eq!(second.value(), None);
             assert_eq!(second.raw, b"ohyeah".as_slice());
         }
 
         {
             let third = tag_iter.next().unwrap();
-            assert_eq!(third.name(), None);
+            assert_eq!(third.name(), b"");
             assert_eq!(third.value(), None);
             assert_eq!(third.raw, b"".as_slice());
         }
 
         {
             let fourth = tag_iter.next().unwrap();
-            assert_eq!(fourth.name(), Some(b"country".as_slice()));
+            assert_eq!(fourth.name(), b"country".as_slice());
             assert_eq!(fourth.value(), Some(b"china".as_slice()));
             assert_eq!(fourth.raw, b"country:china".as_slice());
         }
 
         {
             let fifth = tag_iter.next().unwrap();
-            assert_eq!(fifth.name(), None);
+            assert_eq!(fifth.name(), b"");
             assert_eq!(fifth.value(), None);
             assert_eq!(fifth.raw, b"".as_slice());
         }
