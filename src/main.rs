@@ -19,15 +19,22 @@ struct Args {
     /// Specify an address to an upstream statsd server in 'host:port' format.
     #[arg(short, long)]
     upstream: String,
-    // TODO: implement a middleware, a way of nesting them and a configuration file
+
+    /// Specify a configuration file to add middlewares. See example.yaml for which middlewares are
+    /// supported.
     #[arg(short, long)]
-    config_path: String,
+    config_path: Option<String>,
 }
 
 fn main() -> Result<(), Error> {
     let args = Args::parse();
 
-    let config = config::Config::new(&args.config_path)?;
+    let config = args
+        .config_path
+        .as_deref()
+        .map(config::Config::new)
+        .transpose()?
+        .unwrap_or_default();
 
     let mut client: Box<dyn middleware::Middleware> = Box::new(Upstream::new(args.upstream)?);
     for middleware_config in config.middlewares.into_iter().rev() {
@@ -42,6 +49,12 @@ fn main() -> Result<(), Error> {
                 client = Box::new(middleware::cardinality_limit::CardinalityLimit::new(
                     config, client,
                 ));
+            }
+            config::MiddlewareConfig::AggregateMetrics(config) => {
+                client = Box::new(middleware::aggregate::AggregateMetrics::new(config, client));
+            }
+            config::MiddlewareConfig::AddTag(config) => {
+                client = Box::new(middleware::add_tag::AddTag::new(config, client));
             }
         }
     }
