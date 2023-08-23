@@ -1,4 +1,6 @@
+use std::io::ErrorKind;
 use std::net::UdpSocket;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
@@ -61,6 +63,29 @@ impl Upstream {
             last_sent_at: UNIX_EPOCH,
         })
     }
+
+    pub fn flush(&mut self) {
+        if self.buf_used > 0 {
+            let bytes = self
+                .socket
+                .send(&self.buffer[..self.buf_used])
+                .expect("failed to send to upstream");
+            if bytes != self.buf_used {
+                // UDP, so this should never happen, but...
+                panic!(
+                    "tried to send {} bytes but only sent {}.",
+                    self.buf_used, bytes
+                );
+            }
+            self.buf_used = 0;
+        }
+    }
+}
+
+impl Drop for Upstream {
+    fn drop(&mut self) {
+        self.flush();
+    }
 }
 
 impl Middleware for Upstream {
@@ -72,22 +97,9 @@ impl Middleware for Upstream {
                 .duration_since(self.last_sent_at)
                 .map_or(true, |x| x > Duration::from_secs(1))
         {
-            if self.buf_used > 0 {
-                // Message bigger than space left in buffer, or we have not sent any metrics in a
-                // while. Flush the buffer.
-                let bytes = self
-                    .socket
-                    .send(&self.buffer[..self.buf_used])
-                    .expect("failed to send to upstream");
-                if bytes != self.buf_used {
-                    // UDP, so this should never happen, but...
-                    panic!(
-                        "tried to send {} bytes but only sent {}.",
-                        self.buf_used, bytes
-                    );
-                }
-                self.buf_used = 0;
-            }
+            // Message bigger than space left in buffer, or we have not sent any metrics in a
+            // while. Flush the buffer.
+            self.flush();
             self.last_sent_at = now;
         }
         if metric_len > BUFSIZE {
@@ -127,6 +139,8 @@ where
 {
     pub fn new(listen: String, middleware: M) -> Result<Self, Error> {
         let socket = UdpSocket::bind(listen)?;
+        // An acceptable balance between busyloop and responsiveness to signals.
+        socket.set_read_timeout(Some(Duration::from_secs(1)))?;
         Ok(Server { socket, middleware })
     }
 
@@ -135,8 +149,23 @@ where
         // one that breaks that setup.
         let mut buf = [0; 65535];
 
-        loop {
-            let (num_bytes, _app_socket) = self.socket.recv_from(buf.as_mut_slice())?;
+        let stop = Arc::new(AtomicBool::new(false));
+        // This block is basically useless on windows. Would need to implement as a full fledged
+        // service.
+        #[cfg(not(windows))] // No SIGHUP on windows.
+        signal_hook::flag::register(signal_hook::consts::SIGHUP, Arc::clone(&stop))?;
+        signal_hook::flag::register(signal_hook::consts::SIGINT, Arc::clone(&stop))?;
+        signal_hook::flag::register(signal_hook::consts::SIGTERM, Arc::clone(&stop))?;
+
+        while !stop.load(Ordering::Relaxed) {
+            let (num_bytes, _app_socket) = match self.socket.recv_from(buf.as_mut_slice()) {
+                Err(err) => match err.kind() {
+                    // Different timeout errors might be raised depending on platform.
+                    ErrorKind::WouldBlock | ErrorKind::TimedOut => continue,
+                    _ => return Err(Error::from(err)),
+                },
+                Ok(s) => s,
+            };
             for raw in buf[..num_bytes].split(|&x| x == b'\n') {
                 if raw.is_empty() {
                     continue;
@@ -157,5 +186,6 @@ where
                 }
             }
         }
+        Ok(())
     }
 }
