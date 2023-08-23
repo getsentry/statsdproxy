@@ -122,14 +122,6 @@ mod tests {
                         max_map_size: None,
                     },
                 ),
-                AddTag(
-                    AddTagConfig {
-                        tags: [
-                            "d",
-                            "e:1",
-                        ]
-                    }
-                )
             ],
         }
         "###);
