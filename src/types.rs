@@ -95,7 +95,6 @@ impl<'a> Iterator for MetricTagIterator<'a> {
             // Got a tag and no more tags remain
             let tag = MetricTag::new(remaining_tags);
             self.remaining_tags = None;
-
             Some(tag)
         };
     }
@@ -288,7 +287,6 @@ mod tests {
     fn tag_iter() {
         let metric =
             Metric::new(b"users.online:1|c|@0.5|#instance:foobar,ohyeah,,country:china,".to_vec());
-
         let mut tag_iter = metric.tags_iter();
 
         {

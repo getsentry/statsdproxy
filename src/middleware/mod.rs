@@ -6,6 +6,7 @@ use anyhow::Error;
 
 use crate::types::Metric;
 
+pub mod add_tag;
 pub mod aggregate;
 pub mod allow_tag;
 pub mod cardinality_limit;

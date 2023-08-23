@@ -36,7 +36,7 @@ middlewares:
     # Defaults to true.
     #
     # aggregate_gauges: true
-    
+
     # Flush the aggregate buffer every `flush_interval` seconds.
     # Defaults to 1 second.
     #

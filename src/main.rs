@@ -53,6 +53,9 @@ fn main() -> Result<(), Error> {
             config::MiddlewareConfig::AggregateMetrics(config) => {
                 client = Box::new(middleware::aggregate::AggregateMetrics::new(config, client));
             }
+            config::MiddlewareConfig::AddTag(config) => {
+                client = Box::new(middleware::add_tag::AddTag::new(config, client));
+            }
         }
     }
 
