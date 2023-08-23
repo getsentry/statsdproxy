@@ -34,7 +34,7 @@ where
         let mut tags_to_keep = Vec::new();
         let mut rewrite_tags = false;
         for tag in metric.tags_iter() {
-            if tag.name().is_some_and(|t| self.tags.contains(t)) {
+            if self.tags.contains(tag.name()) {
                 tags_to_keep.push(tag);
             } else {
                 rewrite_tags = true;

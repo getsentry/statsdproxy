@@ -22,6 +22,7 @@ pub enum MiddlewareConfig {
     AllowTag(AllowTagConfig),
     CardinalityLimit(CardinalityLimitConfig),
     AggregateMetrics(AggregateMetricsConfig),
+    AddTag(AddTagConfig),
 }
 
 #[derive(Debug, Deserialize, PartialEq)]
@@ -43,6 +44,11 @@ pub struct LimitConfig {
 #[derive(Debug, Deserialize, PartialEq)]
 pub struct CardinalityLimitConfig {
     pub limits: Vec<LimitConfig>,
+}
+
+#[derive(Debug, Deserialize, PartialEq)]
+pub struct AddTagConfig {
+    pub tags: Vec<String>,
 }
 
 fn default_true() -> bool {
