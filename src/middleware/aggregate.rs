@@ -245,4 +245,54 @@ mod tests {
             )]
         );
     }
+
+    #[test]
+    fn gauges() {
+        let config = AggregateMetricsConfig {
+            aggregate_counters: true,
+            aggregate_gauges: true,
+            flush_interval: 10,
+            flush_offset: 0,
+            max_map_size: None,
+        };
+        let results = RefCell::new(vec![]);
+        let next = FnStep(|metric| {
+            results.borrow_mut().push(metric);
+            Ok(())
+        });
+        let mut aggregator = AggregateMetrics::new(config, next);
+
+        *CURRENT_TIME.lock().unwrap() = Some(0);
+
+        aggregator.poll().unwrap();
+
+        aggregator
+            .submit(Metric::new(
+                b"users.online:3|g|@0.5|#country:china".to_vec(),
+            ))
+            .unwrap();
+
+        *CURRENT_TIME.lock().unwrap() = Some(1);
+
+        aggregator.poll().unwrap();
+
+        aggregator
+            .submit(Metric::new(
+                b"users.online:2|g|@0.5|#country:china".to_vec(),
+            ))
+            .unwrap();
+
+        assert_eq!(results.borrow_mut().len(), 0);
+
+        *CURRENT_TIME.lock().unwrap() = Some(11);
+
+        aggregator.poll().unwrap();
+
+        assert_eq!(
+            results.borrow_mut().as_slice(),
+            &[Metric::new(
+                b"users.online:2|g|@0.5|#country:china".to_vec()
+            )]
+        );
+    }
 }
