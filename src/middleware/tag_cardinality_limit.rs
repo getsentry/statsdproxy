@@ -99,21 +99,21 @@ mod tests {
                 limit: 1,
             }],
         };
-        // let results = RefCell::new(vec![]);
-        // let next = FnStep(|metric| {
-        //     results.borrow_mut().push(metric);
-        //     Ok(())
-        // });
+        let results = RefCell::new(vec![]);
+        let next = FnStep(|metric| {
+            results.borrow_mut().push(metric);
+            Ok(())
+        });
 
-        // let mut limiter = TagCardinalityLimit::new(config, next);
-        // limiter
-        //     .submit(Metric::new(b"users.online:1|c|#env:prod".to_vec()))
-        //     .unwrap();
-        // assert_eq!(results.borrow_mut().len(), 1);
-        // limiter
-        //     .submit(Metric::new(b"users.online:1|c|#env:dev".to_vec()))
-        //     .unwrap();
-        // assert_eq!(results.borrow_mut().len(), 1);
+        let mut limiter = TagCardinalityLimit::new(config, next);
+        limiter
+            .submit(Metric::new(b"users.online:1|c|#env:prod".to_vec()))
+            .unwrap();
+        assert_eq!(results.borrow_mut().len(), 1);
+        limiter
+            .submit(Metric::new(b"users.online:1|c|#env:dev".to_vec()))
+            .unwrap();
+        assert_eq!(results.borrow_mut().len(), 1);
     }
 
     #[test]
