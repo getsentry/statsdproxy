@@ -61,7 +61,6 @@ where
                         && !quota.values_seen.contains(tag_value)
                     {
                         // Drop the tags that don't fit in quota
-                        println!("dropping");
                         continue;
                     }
                 }
@@ -74,7 +73,14 @@ where
 
         self.next.submit(rewritten_metric)?;
 
-        // TODO: Bump quota
+        // Increment quotas
+        for tag in metric.tags_iter() {
+            for quota in self.quotas.iter_mut() {
+                if quota.tag == "*" || quota.tag.as_bytes() == tag.name() {
+                    quota.values_seen.insert(tag.value().unwrap().to_vec());
+                }
+            }
+        }
 
         Ok(())
     }
@@ -88,7 +94,6 @@ where
 mod tests {
     use super::*;
     use crate::testutils::FnStep;
-    use crate::types::MetricTag;
     use std::cell::RefCell;
 
     #[test]
@@ -109,17 +114,17 @@ mod tests {
         limiter
             .submit(Metric::new(b"users.online:1|c|#env:prod".to_vec()))
             .unwrap();
-        assert_eq!(results.borrow_mut().len(), 1);
+        assert_eq!(
+            results.borrow()[0],
+            Metric::new(b"users.online:1|c|#env:prod".to_vec())
+        );
         limiter
             .submit(Metric::new(b"users.online:1|c|#env:dev".to_vec()))
             .unwrap();
-        assert_eq!(results.borrow_mut().len(), 1);
-    }
-
-    #[test]
-    fn test() {
-        let tag = MetricTag::new(b"a:b:c");
-        println!("{:?}", tag.name());
-        println!("{:?}", tag.value());
+        // env was stripped from metric
+        assert_eq!(
+            results.borrow()[1],
+            Metric::new(b"users.online:1|c".to_vec())
+        );
     }
 }
