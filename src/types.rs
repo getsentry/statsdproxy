@@ -169,10 +169,13 @@ impl Metric {
         let tag_bytes = tag_iter.map(|t| t.raw);
         let mut tag_buffer = Vec::new();
         for t in tag_bytes {
+            if tag_buffer.len() > 0 {
+                tag_buffer.push(b',');
+            }
             tag_buffer.extend(t);
-            tag_buffer.push(b',');
         }
-        self.set_tags(&tag_buffer[0..tag_buffer.len() - 1]); // omit trailing ',' from loop above
+
+        self.set_tags(&tag_buffer[0..tag_buffer.len()]);
     }
 }
 
