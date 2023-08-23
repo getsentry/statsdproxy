@@ -63,7 +63,7 @@ where
                     {
                         // Drop the tags that don't fit in quota
                         keep_tag = false;
-                        continue;
+                        break;
                     }
                 }
                 if keep_tag {
