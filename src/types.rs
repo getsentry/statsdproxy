@@ -169,7 +169,7 @@ impl Metric {
         let tag_bytes = tag_iter.map(|t| t.raw);
         let mut tag_buffer = Vec::new();
         for t in tag_bytes {
-            if tag_buffer.is_empty() {
+            if !tag_buffer.is_empty() {
                 tag_buffer.push(b',');
             }
             tag_buffer.extend(t);
