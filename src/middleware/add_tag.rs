@@ -2,11 +2,10 @@ use crate::config::AddTagConfig;
 use crate::middleware::{Middleware, Overloaded};
 use crate::types::Metric;
 use anyhow::Error;
-use std::collections::HashSet;
 
 pub struct AddTag<M> {
     #[allow(dead_code)]
-    tags: HashSet<Vec<u8>>,
+    tags: Vec<u8>,
     next: M,
 }
 
@@ -15,9 +14,7 @@ where
     M: Middleware,
 {
     pub fn new(config: AddTagConfig, next: M) -> Self {
-        let tags: HashSet<Vec<u8>> =
-            HashSet::from_iter(config.tags.iter().cloned().map(|tag| tag.into_bytes()));
-
+        let tags = config.tags.join(",").into_bytes();
         Self { tags, next }
     }
 }
@@ -30,7 +27,20 @@ where
         self.next.poll()
     }
 
-    fn submit(&mut self, metric: Metric) -> Result<(), Overloaded> {
+    fn submit(&mut self, mut metric: Metric) -> Result<(), Overloaded> {
+        match metric.tags() {
+            Some(tags) => {
+                let mut tag_buffer: Vec<u8> = Vec::new();
+                tag_buffer.extend(tags);
+                tag_buffer.extend(",".as_bytes());
+                tag_buffer.extend(&self.tags);
+                metric.set_tags(&tag_buffer);
+            }
+            None => {
+                metric.set_tags(&self.tags);
+            }
+        }
+
         self.next.submit(metric)
     }
 
@@ -46,23 +56,32 @@ mod tests {
 
     #[test]
     fn add_tag() {
-        let config = AddTagConfig {
-            tags: vec!["env:prod".to_string()],
-        };
-        let results = RefCell::new(vec![]);
-        let next = FnStep(|metric| {
-            results.borrow_mut().push(metric);
-            Ok(())
-        });
+        let test_cases = [
+            // Without tags
+            ("users.online:1|c", "users.online:1|c|#env:prod"),
+            // With tags
+            (
+                "users.online:1|c|#tag1:a",
+                "users.online:1|c|#tag1:a,env:prod",
+            ),
+        ];
 
-        let mut middleware = AddTag::new(config, next);
+        for test_case in test_cases {
+            let config = AddTagConfig {
+                tags: vec!["env:prod".to_string()],
+            };
+            let results = RefCell::new(vec![]);
+            let next = FnStep(|metric| {
+                results.borrow_mut().push(metric);
+                Ok(())
+            });
 
-        let metric_without_tags = Metric::new(b"users.online:1|c".to_vec());
-
-        middleware.submit(metric_without_tags).unwrap();
-
-        let updated_metric = Metric::new(results.borrow_mut()[0].raw.clone());
-
-        assert_eq!(updated_metric.tags(), Some(b"env:prod" as &[u8]));
+            let mut middleware = AddTag::new(config, next);
+            let metric = Metric::new(test_case.0.as_bytes().to_vec());
+            middleware.submit(metric).unwrap();
+            assert_eq!(results.borrow().len(), 1);
+            let updated_metric = Metric::new(results.borrow_mut()[0].raw.clone());
+            assert_eq!(updated_metric.raw, test_case.1.as_bytes());
+        }
     }
 }
