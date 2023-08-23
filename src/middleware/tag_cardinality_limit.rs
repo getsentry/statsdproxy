@@ -58,8 +58,8 @@ where
                 for quota in self.quotas.iter() {
                     // Drop the tag if it does not fit in quota
                     if (quota.tag == "*" || quota.tag.as_bytes() == tag_name)
-                        && (quota.values_seen.len() < quota.limit as usize
-                            || quota.values_seen.contains(tag_value))
+                        && (quota.values_seen.len() >= quota.limit as usize
+                            && !quota.values_seen.contains(tag_value))
                     {
                         // Drop the tags that don't fit in quota
                         keep_tag = false;
