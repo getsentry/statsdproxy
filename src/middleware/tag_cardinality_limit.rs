@@ -52,33 +52,31 @@ where
         let mut tags_to_keep = Vec::new();
 
         for tag in metric.tags_iter() {
-            let tag_key = tag.name();
-            // TODO: fix this
-            let tag_value = tag.value();
-
-            for quota in self.quotas.iter() {
-                // Drop the tag if it does not fit in quota
-                if (quota.tag == "*" || quota.tag.as_bytes() == tag_key)
-                    && quota.values_seen.len() >= quota.limit as usize
-                // && !quota.values_seen.contains(tag_value)
-                {
-                    // Drop the tags that don't fit in quota
-                    println!("dropping");
-                } else {
-                    tags_to_keep.push(tag_value);
+            let tag_name = tag.name();
+            if let Some(tag_value) = tag.value() {
+                for quota in self.quotas.iter() {
+                    // Drop the tag if it does not fit in quota
+                    if (quota.tag == "*" || quota.tag.as_bytes() == tag_name)
+                        && quota.values_seen.len() >= quota.limit as usize
+                        && !quota.values_seen.contains(tag_value)
+                    {
+                        // Drop the tags that don't fit in quota
+                        println!("dropping");
+                        continue;
+                    }
                 }
-
-                // Increase the quota
+                tags_to_keep.push(tag);
             }
         }
 
-        let quota = self.quotas[0].clone();
-        println!(
-            "quotas: {} {} {:?}",
-            quota.tag, quota.limit, quota.values_seen
-        );
+        let mut rewritten_metric = metric.clone();
+        rewritten_metric.set_tags_from_iter(tags_to_keep.iter());
 
-        self.next.submit(metric)
+        self.next.submit(rewritten_metric)?;
+
+        // TODO: Bump quota
+
+        Ok(())
     }
 
     fn join(&mut self) -> Result<(), Error> {
