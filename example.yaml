@@ -1,7 +1,59 @@
+# Define middlewares to transform statsd metrics before they are forwarded.
+# Middlewares are applied top-to-bottom, and middlewares of the same `type` can
+# be applied multiple times.
+#
+# `middlewares: []` will make statsdproxy forward UDP packets almost verbatim,
+# regardless of whether the metrics are parseable or not. It's equivalent to
+# specifying an empty configuration file or none at all.
+
 middlewares:
+  # Remove a list of tag names ("a", "b" and "c") from incoming metrics
   - type: deny-tag
     tags: [a, b, c]
+
+  # Allow a list of tag names ("a", "b" and "c") from incoming metrics, and
+  # remove all other tags.
+  - type: allow-tag
+    tags: [x, y, z]
+
+  # Apply a limit on the number of timeseries that can be passed through.
+  # Multiple limits with different windows can be specified.
   - type: cardinality-limit
     limits:
       - window: 3600
         limit: 3
+
+  # Fold many metrics into one. Currently only gauges and counters are
+  # supported, other types or otherwise unparseable lines will be passed
+  # through unbuffered.
+  - type: aggregate-metrics
+    # Whether counters should be aggregated.
+    # Defaults to true.
+    #
+    # aggregate_counters: true
+
+    # Whether gauges should be aggregated.
+    # Defaults to true.
+    #
+    # aggregate_gauges: true
+    
+    # Flush the aggregate buffer every `flush_interval` seconds.
+    # Defaults to 1 second.
+    #
+    # flush_interval: 1
+
+    # Normally the times at which metrics are flushed are approximately aligned
+    # with a multiple of `flush_interval`. For example, a `flush_interval` of 1
+    # hour means that metrics are flushed at the start of every (wall clock)
+    # hour. You can change this parameter to shift this bucketing window by a
+    # number of seconds, possibly to remove certain artifacts when aggregating
+    # at multiple levels. The amount can be negative.
+    # Defaults to 0.
+    #
+    # flush_offset: 0
+
+    # The maximum number of metrics to buffer up. If that limit is hit, the map is forcibly
+    # flushed before the flush_interval.
+    # Defaults to no limit.
+    #
+    # max_map_size: ~

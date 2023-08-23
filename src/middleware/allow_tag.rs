@@ -20,7 +20,7 @@ impl AllowTag {
 }
 
 impl Middleware for AllowTag {
-    fn poll(&mut self) -> Result<(), Error> {
+    fn poll(&mut self) -> Result<(), Overloaded> {
         self.next.poll()
     }
 
