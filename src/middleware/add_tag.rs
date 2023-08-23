@@ -23,7 +23,7 @@ impl<M> Middleware for AddTag<M>
 where
     M: Middleware,
 {
-    fn poll(&mut self) -> Result<(), Error> {
+    fn poll(&mut self) -> Result<(), Overloaded> {
         self.next.poll()
     }
 

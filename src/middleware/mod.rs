@@ -1,27 +1,29 @@
 use std::net::UdpSocket;
 use std::sync::Arc;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use anyhow::Error;
 
 use crate::types::Metric;
 
 pub mod add_tag;
+pub mod aggregate;
 pub mod allow_tag;
 pub mod cardinality_limit;
 pub mod deny_tag;
 
-const BUFSIZE: usize = 4096;
+const BUFSIZE: usize = 8192;
 
 #[derive(Debug)]
 pub struct Overloaded {
-    pub metric: Metric,
+    pub metric: Option<Metric>,
 }
 
 impl Middleware for Box<dyn Middleware> {
     fn join(&mut self) -> Result<(), Error> {
         self.as_mut().join()
     }
-    fn poll(&mut self) -> Result<(), Error> {
+    fn poll(&mut self) -> Result<(), Overloaded> {
         self.as_mut().poll()
     }
     fn submit(&mut self, metric: Metric) -> Result<(), Overloaded> {
@@ -33,7 +35,7 @@ pub trait Middleware {
     fn join(&mut self) -> Result<(), Error> {
         Ok(())
     }
-    fn poll(&mut self) -> Result<(), Error> {
+    fn poll(&mut self) -> Result<(), Overloaded> {
         Ok(())
     }
     fn submit(&mut self, metric: Metric) -> Result<(), Overloaded>;
@@ -43,6 +45,7 @@ pub struct Upstream {
     socket: Arc<UdpSocket>,
     buffer: [u8; BUFSIZE],
     buf_used: usize,
+    last_sent_at: SystemTime,
 }
 
 impl Upstream {
@@ -55,27 +58,37 @@ impl Upstream {
             socket: Arc::new(socket),
             buffer: [0; BUFSIZE],
             buf_used: 0,
+            last_sent_at: UNIX_EPOCH,
         })
     }
 }
 
 impl Middleware for Upstream {
     fn submit(&mut self, metric: Metric) -> Result<(), Overloaded> {
+        let now = SystemTime::now();
         let metric_len = metric.raw.len();
-        if metric_len + 1 > BUFSIZE - self.buf_used {
-            // Message bigger than space left in buffer. Flush the buffer.
-            let bytes = self
-                .socket
-                .send(&self.buffer[..self.buf_used])
-                .expect("failed to send to upstream");
-            if bytes != self.buf_used {
-                // UDP, so this should never happen, but...
-                panic!(
-                    "tried to send {} bytes but only sent {}.",
-                    self.buf_used, bytes
-                );
+        if metric_len + 1 > BUFSIZE - self.buf_used
+            || now
+                .duration_since(self.last_sent_at)
+                .map_or(true, |x| x > Duration::from_secs(1))
+        {
+            if self.buf_used > 0 {
+                // Message bigger than space left in buffer, or we have not sent any metrics in a
+                // while. Flush the buffer.
+                let bytes = self
+                    .socket
+                    .send(&self.buffer[..self.buf_used])
+                    .expect("failed to send to upstream");
+                if bytes != self.buf_used {
+                    // UDP, so this should never happen, but...
+                    panic!(
+                        "tried to send {} bytes but only sent {}.",
+                        self.buf_used, bytes
+                    );
+                }
+                self.buf_used = 0;
             }
-            self.buf_used = 0;
+            self.last_sent_at = now;
         }
         if metric_len > BUFSIZE {
             // Message too big for the entire buffer, send it and pray.
@@ -134,10 +147,12 @@ where
 
                 let mut carryover_metric = Some(metric);
                 while let Some(metric) = carryover_metric.take() {
-                    self.middleware.poll()?;
-                    match self.middleware.submit(metric) {
-                        Ok(()) => {}
-                        Err(Overloaded { metric }) => carryover_metric = Some(metric),
+                    if let Err(Overloaded { metric }) = self
+                        .middleware
+                        .poll()
+                        .and_then(|()| self.middleware.submit(metric))
+                    {
+                        carryover_metric = metric;
                     }
                 }
             }
