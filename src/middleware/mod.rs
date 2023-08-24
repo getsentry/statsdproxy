@@ -166,12 +166,16 @@ where
         let mut buf = [0; 65535];
 
         let stop = Arc::new(AtomicBool::new(false));
-        // This block is basically useless on windows. Would need to implement as a full fledged
-        // service.
-        #[cfg(not(windows))] // No SIGHUP on windows.
-        signal_hook::flag::register(signal_hook::consts::SIGHUP, Arc::clone(&stop))?;
-        signal_hook::flag::register(signal_hook::consts::SIGINT, Arc::clone(&stop))?;
-        signal_hook::flag::register(signal_hook::consts::SIGTERM, Arc::clone(&stop))?;
+
+        #[cfg(feature = "cli")]
+        {
+            // This block is basically useless on windows. Would need to implement as a full fledged
+            // service.
+            #[cfg(not(windows))] // No SIGHUP on windows.
+            signal_hook::flag::register(signal_hook::consts::SIGHUP, Arc::clone(&stop))?;
+            signal_hook::flag::register(signal_hook::consts::SIGINT, Arc::clone(&stop))?;
+            signal_hook::flag::register(signal_hook::consts::SIGTERM, Arc::clone(&stop))?;
+        }
 
         while !stop.load(Ordering::Relaxed) {
             let (num_bytes, _app_socket) = match self.socket.recv_from(buf.as_mut_slice()) {
