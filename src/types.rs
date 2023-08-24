@@ -165,7 +165,7 @@ impl Metric {
         }
     }
 
-    pub fn set_tags_from_iter<'a, M: Iterator<Item = &'a MetricTag<'a>>>(&mut self, tag_iter: M) {
+    pub fn set_tags_from_iter<'a, M: Iterator<Item = MetricTag<'a>>>(&mut self, tag_iter: M) {
         let tag_bytes = tag_iter.map(|t| t.raw);
         let mut tag_buffer = Vec::new();
         for t in tag_bytes {

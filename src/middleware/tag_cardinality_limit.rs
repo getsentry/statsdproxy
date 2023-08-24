@@ -49,11 +49,11 @@ where
     }
 
     fn submit(&mut self, metric: Metric) -> Result<(), Overloaded> {
-        let mut tags_to_keep = Vec::new();
-
-        for tag in metric.tags_iter() {
+        let mut rewritten_metric = metric.clone();
+        rewritten_metric.set_tags_from_iter(metric.tags_iter().filter(|tag| {
             let tag_name = tag.name();
             let mut keep_tag = true;
+
             if let Some(tag_value) = tag.value() {
                 for quota in self.quotas.iter() {
                     // Drop the tag if it does not fit in quota
@@ -67,13 +67,12 @@ where
                     }
                 }
                 if keep_tag {
-                    tags_to_keep.push(tag);
+                    return true;
                 }
             }
-        }
 
-        let mut rewritten_metric = metric.clone();
-        rewritten_metric.set_tags_from_iter(tags_to_keep.iter());
+            false
+        }));
 
         self.next.submit(rewritten_metric)?;
 
