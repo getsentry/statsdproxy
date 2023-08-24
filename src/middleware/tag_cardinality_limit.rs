@@ -50,7 +50,6 @@ where
 
     fn submit(&mut self, metric: Metric) -> Result<(), Overloaded> {
         let mut rewritten_metric = metric.clone();
-        let mut tags_to_drop: Vec<(Vec<u8>, Vec<u8>)> = Vec::new();
 
         rewritten_metric.set_tags_from_iter(metric.tags_iter().filter(|tag| {
             let tag_name = tag.name();
@@ -62,8 +61,6 @@ where
                         && (quota.values_seen.len() >= quota.limit as usize
                             && !quota.values_seen.contains(tag_value))
                     {
-                        let data: (Vec<u8>, Vec<u8>) = (tag_name.to_vec(), tag_value.to_vec());
-                        tags_to_drop.push(data);
                         return false;
                     }
                 }
@@ -73,13 +70,15 @@ where
             true
         }));
 
-        self.next.submit(rewritten_metric)?;
+        self.next.submit(rewritten_metric.clone())?;
 
         // Increment quotas
-        for (name, value) in tags_to_drop {
+        for tag in rewritten_metric.tags_iter() {
             for quota in self.quotas.iter_mut() {
-                if quota.tag == "*" || quota.tag.as_bytes() == name {
-                    quota.values_seen.insert(value.clone());
+                if quota.tag == "*" || quota.tag.as_bytes() == tag.name().to_vec() {
+                    if let Some(tag_value) = tag.value() {
+                        quota.values_seen.insert(tag_value.to_vec());
+                    }
                 }
             }
         }
