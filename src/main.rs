@@ -2,7 +2,7 @@ use anyhow::Error;
 use clap::Parser;
 
 use statsdproxy::config;
-use statsdproxy::middleware::{server::Server, Upstream, self};
+use statsdproxy::middleware::{self, server::Server, Upstream};
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
