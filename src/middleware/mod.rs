@@ -18,19 +18,14 @@ pub mod server;
 
 const BUFSIZE: usize = 8192;
 
-#[derive(Debug)]
-pub struct Overloaded {
-    pub metric: Option<Metric>,
-}
-
 impl Middleware for Box<dyn Middleware> {
     fn join(&mut self) -> Result<(), Error> {
         self.as_mut().join()
     }
-    fn poll(&mut self) -> Result<(), Overloaded> {
+    fn poll(&mut self) {
         self.as_mut().poll()
     }
-    fn submit(&mut self, metric: Metric) -> Result<(), Overloaded> {
+    fn submit(&mut self, metric: Metric) {
         self.as_mut().submit(metric)
     }
 }
@@ -39,10 +34,8 @@ pub trait Middleware {
     fn join(&mut self) -> Result<(), Error> {
         Ok(())
     }
-    fn poll(&mut self) -> Result<(), Overloaded> {
-        Ok(())
-    }
-    fn submit(&mut self, metric: Metric) -> Result<(), Overloaded>;
+    fn poll(&mut self) {}
+    fn submit(&mut self, metric: Metric);
 }
 
 pub struct Upstream {
@@ -106,7 +99,7 @@ impl Drop for Upstream {
 }
 
 impl Middleware for Upstream {
-    fn submit(&mut self, metric: Metric) -> Result<(), Overloaded> {
+    fn submit(&mut self, metric: Metric) {
         let metric_len = metric.raw.len();
         if metric_len + 1 > BUFSIZE - self.buf_used {
             // Message bigger than space left in buffer. Flush the buffer.
@@ -136,11 +129,9 @@ impl Middleware for Upstream {
         }
         // poll gets called before submit, so if the buffer needed to be flushed for time reasons,
         // it already was.
-        Ok(())
     }
 
-    fn poll(&mut self) -> Result<(), Overloaded> {
+    fn poll(&mut self) {
         self.timed_flush();
-        Ok(())
     }
 }

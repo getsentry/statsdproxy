@@ -1,5 +1,5 @@
 use crate::config::{TagCardinalityLimitConfig, TagLimitConfig};
-use crate::middleware::{Middleware, Overloaded};
+use crate::middleware::Middleware;
 use crate::types::Metric;
 use anyhow::Error;
 use std::collections::HashSet;
@@ -43,11 +43,11 @@ impl<M> Middleware for TagCardinalityLimit<M>
 where
     M: Middleware,
 {
-    fn poll(&mut self) -> Result<(), Overloaded> {
+    fn poll(&mut self) {
         self.next.poll()
     }
 
-    fn submit(&mut self, metric: Metric) -> Result<(), Overloaded> {
+    fn submit(&mut self, metric: Metric) {
         let mut rewritten_metric = metric.clone();
 
         rewritten_metric.set_tags_from_iter(metric.tags_iter().filter(|tag| {
@@ -75,7 +75,7 @@ where
             true
         }));
 
-        self.next.submit(rewritten_metric.clone())?;
+        self.next.submit(rewritten_metric.clone());
 
         // Increment quotas
         for tag in rewritten_metric.tags_iter() {
@@ -95,8 +95,6 @@ where
                 }
             }
         }
-
-        Ok(())
     }
 
     fn join(&mut self) -> Result<(), Error> {
@@ -121,29 +119,22 @@ mod tests {
         let results = RefCell::new(vec![]);
         let next = FnStep(|metric| {
             results.borrow_mut().push(metric);
-            Ok(())
         });
 
         let mut limiter = TagCardinalityLimit::new(config, next);
-        limiter
-            .submit(Metric::new(b"users.online:1|c|#env:prod".to_vec()))
-            .unwrap();
+        limiter.submit(Metric::new(b"users.online:1|c|#env:prod".to_vec()));
         assert_eq!(
             results.borrow()[0],
             Metric::new(b"users.online:1|c|#env:prod".to_vec())
         );
-        limiter
-            .submit(Metric::new(b"users.online:1|c|#env:dev".to_vec()))
-            .unwrap();
+        limiter.submit(Metric::new(b"users.online:1|c|#env:dev".to_vec()));
         // env was stripped from metric
         assert_eq!(
             results.borrow()[1],
             Metric::new(b"users.online:1|c".to_vec())
         );
 
-        limiter
-            .submit(Metric::new(b"users.online:1|c|#env".to_vec()))
-            .unwrap();
+        limiter.submit(Metric::new(b"users.online:1|c|#env".to_vec()));
         // Tag without value is not limited
         assert_eq!(
             results.borrow()[2],

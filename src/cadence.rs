@@ -37,12 +37,9 @@ where
         let cooked_metric = Metric::new(raw_metric.as_bytes().to_vec());
         let mut next = self.next.lock().unwrap();
         next.poll();
-        let result = next.submit(cooked_metric);
+        next.submit(cooked_metric);
 
-        match result {
-            Ok(_) => Ok(raw_metric.len()),
-            Err(_) => Err(io::Error::new(io::ErrorKind::Other, "error writing metric")),
-        }
+        Ok(raw_metric.len())
     }
 
     fn flush(&self) -> io::Result<()> {
@@ -66,7 +63,6 @@ mod tests {
         let results2 = results.clone();
         let next = FnStep(move |metric| {
             results.write().unwrap().push(metric);
-            Ok(())
         });
 
         let sink = StatsdProxyMetricSink::new(next);

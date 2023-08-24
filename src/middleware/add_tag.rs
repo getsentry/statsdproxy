@@ -1,5 +1,5 @@
 use crate::config::AddTagConfig;
-use crate::middleware::{Middleware, Overloaded};
+use crate::middleware::Middleware;
 use crate::types::Metric;
 use anyhow::Error;
 
@@ -22,11 +22,11 @@ impl<M> Middleware for AddTag<M>
 where
     M: Middleware,
 {
-    fn poll(&mut self) -> Result<(), Overloaded> {
+    fn poll(&mut self) {
         self.next.poll()
     }
 
-    fn submit(&mut self, mut metric: Metric) -> Result<(), Overloaded> {
+    fn submit(&mut self, mut metric: Metric) {
         match metric.tags() {
             Some(tags) => {
                 let mut tag_buffer: Vec<u8> = Vec::new();
@@ -72,12 +72,11 @@ mod tests {
             let results = RefCell::new(vec![]);
             let next = FnStep(|metric| {
                 results.borrow_mut().push(metric);
-                Ok(())
             });
 
             let mut middleware = AddTag::new(config, next);
             let metric = Metric::new(test_case.0.as_bytes().to_vec());
-            middleware.submit(metric).unwrap();
+            middleware.submit(metric);
             assert_eq!(results.borrow().len(), 1);
             let updated_metric = Metric::new(results.borrow_mut()[0].raw.clone());
             assert_eq!(updated_metric.raw, test_case.1.as_bytes());

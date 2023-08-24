@@ -6,7 +6,7 @@ use std::time::Duration;
 
 use anyhow::Error;
 
-use crate::middleware::{Middleware, Overloaded};
+use crate::middleware::Middleware;
 use crate::types::Metric;
 
 pub struct Server<M> {
@@ -45,7 +45,7 @@ where
                     // Different timeout errors might be raised depending on platform.
                     ErrorKind::WouldBlock | ErrorKind::TimedOut => {
                         // Allow the middlewares to do any needed bookkeeping.
-                        let _ = self.middleware.poll();
+                        self.middleware.poll();
                         continue;
                     }
                     _ => return Err(Error::from(err)),
@@ -60,16 +60,8 @@ where
                 let raw = raw.to_owned();
                 let metric = Metric::new(raw);
 
-                let mut carryover_metric = Some(metric);
-                while let Some(metric) = carryover_metric.take() {
-                    if let Err(Overloaded { metric }) = self
-                        .middleware
-                        .poll()
-                        .and_then(|()| self.middleware.submit(metric))
-                    {
-                        carryover_metric = metric;
-                    }
-                }
+                self.middleware.poll();
+                self.middleware.submit(metric);
             }
         }
         Ok(())

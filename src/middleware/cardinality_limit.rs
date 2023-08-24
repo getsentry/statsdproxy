@@ -1,5 +1,5 @@
 use crate::config::{CardinalityLimitConfig, LimitConfig};
-use crate::middleware::{Middleware, Overloaded};
+use crate::middleware::Middleware;
 use crate::types::Metric;
 use anyhow::Error;
 use crc32fast::Hasher;
@@ -139,11 +139,11 @@ impl<M> Middleware for CardinalityLimit<M>
 where
     M: Middleware,
 {
-    fn poll(&mut self) -> Result<(), Overloaded> {
+    fn poll(&mut self) {
         self.next.poll()
     }
 
-    fn submit(&mut self, metric: Metric) -> Result<(), Overloaded> {
+    fn submit(&mut self, metric: Metric) {
         let metric_hash = self.hash_metric(&metric);
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -155,19 +155,15 @@ where
 
             if !quota.does_metric_fit(now, metric_hash) {
                 log::debug!("Dropping metric {:?}", metric.name());
-                return Ok(());
+                return;
             }
         }
 
-        self.next.submit(metric)?;
+        self.next.submit(metric);
 
-        // If upstream submission of the metric fails with Overloaded, we don't want to count it
-        // against the limit.
         for quota in &mut self.quotas {
             quota.insert_metric(now, metric_hash);
         }
-
-        Ok(())
     }
 
     fn join(&mut self) -> Result<(), Error> {
@@ -194,30 +190,21 @@ mod tests {
         let results = RefCell::new(vec![]);
         let next = FnStep(|metric| {
             results.borrow_mut().push(metric);
-            Ok(())
         });
         let mut limiter = CardinalityLimit::new(config, next);
 
-        limiter
-            .submit(Metric::new(b"users.online:1|c|#country:china".to_vec()))
-            .unwrap();
+        limiter.submit(Metric::new(b"users.online:1|c|#country:china".to_vec()));
         assert_eq!(results.borrow_mut().len(), 1);
 
-        limiter
-            .submit(Metric::new(b"servers.online:1|c|#country:china".to_vec()))
-            .unwrap();
+        limiter.submit(Metric::new(b"servers.online:1|c|#country:china".to_vec()));
         assert_eq!(results.borrow_mut().len(), 2);
 
         // we have already ingested two distinct timeseries, this one should be dropped.
-        limiter
-            .submit(Metric::new(b"servers.online:1|c|#country:japan".to_vec()))
-            .unwrap();
+        limiter.submit(Metric::new(b"servers.online:1|c|#country:japan".to_vec()));
         assert_eq!(results.borrow_mut().len(), 2);
 
         // A metric with the same hash as an old one within `window` should pass through.
-        limiter
-            .submit(Metric::new(b"users.online:1|c|#country:china".to_vec()))
-            .unwrap();
+        limiter.submit(Metric::new(b"users.online:1|c|#country:china".to_vec()));
         assert_eq!(results.borrow_mut().len(), 3);
     }
 }
