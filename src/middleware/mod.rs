@@ -65,7 +65,7 @@ impl Upstream {
         })
     }
 
-    pub fn flush(&mut self) {
+    fn flush(&mut self) {
         if self.buf_used > 0 {
             let bytes = self
                 .socket
@@ -80,6 +80,18 @@ impl Upstream {
             }
             self.buf_used = 0;
         }
+        self.last_sent_at = SystemTime::now(); // Annoyingly superfluous call to now().
+    }
+
+    fn timed_flush(&mut self) {
+        let now = SystemTime::now();
+        if now
+            .duration_since(self.last_sent_at)
+            .map_or(true, |x| x > Duration::from_secs(1))
+        {
+            // We have not sent any metrics in a while. Flush the buffer.
+            self.flush();
+        }
     }
 }
 
@@ -91,17 +103,10 @@ impl Drop for Upstream {
 
 impl Middleware for Upstream {
     fn submit(&mut self, metric: Metric) -> Result<(), Overloaded> {
-        let now = SystemTime::now();
         let metric_len = metric.raw.len();
-        if metric_len + 1 > BUFSIZE - self.buf_used
-            || now
-                .duration_since(self.last_sent_at)
-                .map_or(true, |x| x > Duration::from_secs(1))
-        {
-            // Message bigger than space left in buffer, or we have not sent any metrics in a
-            // while. Flush the buffer.
+        if metric_len + 1 > BUFSIZE - self.buf_used {
+            // Message bigger than space left in buffer. Flush the buffer.
             self.flush();
-            self.last_sent_at = now;
         }
         if metric_len > BUFSIZE {
             // Message too big for the entire buffer, send it and pray.
@@ -125,6 +130,13 @@ impl Middleware for Upstream {
             self.buffer[self.buf_used..self.buf_used + metric_len].copy_from_slice(&metric.raw);
             self.buf_used += metric_len;
         }
+        // poll gets called before submit, so if the buffer needed to be flushed for time reasons,
+        // it already was.
+        Ok(())
+    }
+
+    fn poll(&mut self) -> Result<(), Overloaded> {
+        self.timed_flush();
         Ok(())
     }
 }
@@ -162,7 +174,11 @@ where
             let (num_bytes, _app_socket) = match self.socket.recv_from(buf.as_mut_slice()) {
                 Err(err) => match err.kind() {
                     // Different timeout errors might be raised depending on platform.
-                    ErrorKind::WouldBlock | ErrorKind::TimedOut => continue,
+                    ErrorKind::WouldBlock | ErrorKind::TimedOut => {
+                        // Allow the middlewares to do any needed bookkeeping.
+                        let _ = self.middleware.poll();
+                        continue;
+                    }
                     _ => return Err(Error::from(err)),
                 },
                 Ok(s) => s,
