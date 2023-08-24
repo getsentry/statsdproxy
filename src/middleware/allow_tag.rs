@@ -36,6 +36,7 @@ where
             if self.tags.contains(tag.name()) {
                 tags_to_keep.push(tag);
             } else {
+                log::debug!("allow_tag: Dropping disallowed tag: {:?}", tag.name());
                 rewrite_tags = true;
             }
         }

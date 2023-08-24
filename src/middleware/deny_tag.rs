@@ -2,7 +2,6 @@ use crate::config::DenyTagConfig;
 use crate::middleware::{Middleware, Overloaded};
 use crate::types::Metric;
 use anyhow::Error;
-use log;
 use std::collections::HashSet;
 
 pub struct DenyTag<M> {
