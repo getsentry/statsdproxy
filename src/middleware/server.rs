@@ -60,11 +60,8 @@ where
                 let raw = raw.to_owned();
                 let metric = Metric::new(raw);
 
-                let mut carryover_metric = Some(metric);
-                while let Some(metric) = carryover_metric.take() {
-                    self.middleware.poll();
-                    self.middleware.submit(metric);
-                }
+                self.middleware.poll();
+                self.middleware.submit(metric);
             }
         }
         Ok(())
