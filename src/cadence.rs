@@ -61,8 +61,8 @@ mod tests {
     fn basic() {
         let results = Arc::new(RwLock::new(vec![]));
         let results2 = results.clone();
-        let next = FnStep(move |metric| {
-            results.write().unwrap().push(metric);
+        let next = FnStep(move |metric: &mut Metric| {
+            results.write().unwrap().push(metric.clone());
         });
 
         let sink = StatsdProxyMetricSink::new(next);
