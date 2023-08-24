@@ -1,5 +1,5 @@
 use std::io::ErrorKind;
-use std::net::UdpSocket;
+use std::net::{UdpSocket, ToSocketAddrs};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
@@ -51,7 +51,7 @@ pub struct Upstream {
 }
 
 impl Upstream {
-    pub fn new(upstream: String) -> Result<Self, Error> {
+    pub fn new<A>(upstream: A) -> Result<Self, Error> where A: ToSocketAddrs {
         let socket = UdpSocket::bind("0.0.0.0:0")?;
         // cloudflare says connect() allows some kernel-internal optimizations on Linux
         // https://blog.cloudflare.com/everything-you-ever-wanted-to-know-about-udp-sockets-but-were-afraid-to-ask-part-1/
