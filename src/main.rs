@@ -1,13 +1,8 @@
 use anyhow::Error;
 use clap::Parser;
 
-mod config;
-mod middleware;
-#[cfg(test)]
-mod testutils;
-mod types;
-
-use middleware::{server::Server, Upstream};
+use statsdproxy::config;
+use statsdproxy::middleware::{server::Server, Upstream, self};
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
