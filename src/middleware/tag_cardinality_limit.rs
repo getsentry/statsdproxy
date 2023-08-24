@@ -2,6 +2,7 @@ use crate::config::{TagCardinalityLimitConfig, TagLimitConfig};
 use crate::middleware::{Middleware, Overloaded};
 use crate::types::Metric;
 use anyhow::Error;
+use log;
 use std::collections::HashSet;
 
 #[derive(Clone, Debug)]
@@ -31,7 +32,6 @@ impl<M> TagCardinalityLimit<M>
 where
     M: Middleware,
 {
-    #[allow(dead_code)]
     pub fn new(config: TagCardinalityLimitConfig, next: M) -> Self {
         Self {
             next,
@@ -63,6 +63,7 @@ where
                     {
                         // Drop the tags that don't fit in quota
                         keep_tag = false;
+                        log::debug!("Dropping tag {:?} with value {:?}", tag_name, tag_value);
                         break;
                     }
                 }
@@ -81,6 +82,14 @@ where
             for quota in self.quotas.iter_mut() {
                 if quota.tag == "*" || quota.tag.as_bytes() == tag.name() {
                     quota.values_seen.insert(tag.value().unwrap().to_vec());
+
+                    if quota.values_seen.len() == quota.limit as usize {
+                        log::debug!(
+                            "Tag {:?} reached cardinality limit of {}",
+                            quota.tag,
+                            quota.limit
+                        );
+                    }
                 }
             }
         }

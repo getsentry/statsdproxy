@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 use std::fmt;
 use std::str;
 /// A dogstatsd metric is stored internally as the original line of bytes that went over UDP.

@@ -5,7 +5,6 @@ use anyhow::Error;
 use std::collections::HashSet;
 
 pub struct AllowTag<M> {
-    #[allow(dead_code)]
     tags: HashSet<Vec<u8>>,
     next: M,
 }
