@@ -110,8 +110,6 @@ where
 
         let mut values_iter = self.metrics_map.drain();
 
-        // let mut to_be_retried = Vec::new();
-
         for (key, value) in &mut values_iter {
             let value_bytes = match value {
                 BucketValue::Gauge(x) => x.to_string().into_bytes(),
