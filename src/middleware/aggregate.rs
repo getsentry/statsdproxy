@@ -122,6 +122,8 @@ where
             metric_bytes.extend(value_bytes);
             metric_bytes.extend(&key.metric_bytes[key.insert_value_at..]);
 
+            self.next.submit();
+
             // if let Err(Overloaded { .. }) = self.next.submit(dbg!(Metric::new(metric_bytes))) {
             //     println!("overloaded");
             //     to_be_retried.push((key, value));
