@@ -31,7 +31,6 @@ impl<M> TagCardinalityLimit<M>
 where
     M: Middleware,
 {
-    #[allow(dead_code)]
     pub fn new(config: TagCardinalityLimitConfig, next: M) -> Self {
         Self {
             next,
@@ -61,6 +60,12 @@ where
                         && (quota.values_seen.len() >= quota.limit as usize
                             && !quota.values_seen.contains(tag_value))
                     {
+                        // Drop the tags that don't fit in quota
+                        log::debug!(
+                            "tag_cardinality_limit: Dropping tag {:?} with value {:?}",
+                            tag_name,
+                            tag_value
+                        );
                         return false;
                     }
                 }
@@ -75,9 +80,17 @@ where
         // Increment quotas
         for tag in rewritten_metric.tags_iter() {
             for quota in self.quotas.iter_mut() {
-                if quota.tag == "*" || quota.tag.as_bytes() == tag.name().to_vec() {
+                if quota.tag == "*" || quota.tag.as_bytes() == tag.name() {
                     if let Some(tag_value) = tag.value() {
                         quota.values_seen.insert(tag_value.to_vec());
+
+                        if quota.values_seen.len() == quota.limit as usize {
+                            log::info!(
+                                "tag_cardinality_limit: Tag {:?} reached cardinality limit of {}",
+                                quota.tag,
+                                quota.limit
+                            );
+                        }
                     }
                 }
             }
