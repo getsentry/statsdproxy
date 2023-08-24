@@ -34,7 +34,7 @@ where
     // next middleware to do this.
 
     fn emit(&self, raw_metric: &str) -> io::Result<usize> {
-        let cooked_metric = Metric::new(raw_metric.as_bytes().to_vec());
+        let mut cooked_metric = Metric::new(raw_metric.as_bytes().to_vec());
         let mut next = self.next.lock().unwrap();
         next.poll();
         next.submit(&mut cooked_metric);

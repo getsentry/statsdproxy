@@ -26,7 +26,7 @@ where
         self.next.poll()
     }
 
-    fn submit(&mut self, mut metric: &mut Metric) {
+    fn submit(&mut self, metric: &mut Metric) {
         match metric.tags() {
             Some(tags) => {
                 let mut tag_buffer: Vec<u8> = Vec::new();
@@ -40,7 +40,7 @@ where
             }
         }
 
-        self.next.submit(&mut metric)
+        self.next.submit(metric)
     }
 
     fn join(&mut self) -> Result<(), Error> {

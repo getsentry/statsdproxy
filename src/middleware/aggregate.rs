@@ -160,7 +160,7 @@ where
     }
 
     fn submit(&mut self, metric: &mut Metric) {
-        match self.insert_metric(&metric) {
+        match self.insert_metric(metric) {
             Ok(()) => {}
             Err(_) => {
                 // for now discard the parsing error, we might want to add info logging here

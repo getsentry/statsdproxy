@@ -144,7 +144,7 @@ where
     }
 
     fn submit(&mut self, metric: &mut Metric) {
-        let metric_hash = self.hash_metric(&metric);
+        let metric_hash = self.hash_metric(metric);
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap()
