@@ -1,13 +1,14 @@
-use anyhow::Error;
-use serde::Deserialize;
-use std::fs::File;
+#[cfg(feature = "cli")]
+use {anyhow::Error, serde::Deserialize, std::fs::File};
 
-#[derive(Debug, Deserialize, PartialEq, Default)]
+#[cfg_attr(feature = "cli", derive(Deserialize))]
+#[derive(Debug, PartialEq, Default)]
 pub struct Config {
     pub middlewares: Vec<MiddlewareConfig>,
 }
 
 impl Config {
+    #[cfg(feature = "cli")]
     pub fn new(path: &str) -> Result<Self, Error> {
         let f = File::open(path)?;
         let d: Config = serde_yaml::from_reader(f)?;
@@ -15,8 +16,9 @@ impl Config {
     }
 }
 
-#[derive(Debug, Deserialize, PartialEq)]
-#[serde(tag = "type", rename_all = "kebab-case")]
+#[cfg_attr(feature = "cli", derive(Deserialize))]
+#[derive(Debug, PartialEq)]
+#[cfg_attr(feature = "cli", serde(tag = "type", rename_all = "kebab-case"))]
 pub enum MiddlewareConfig {
     DenyTag(DenyTagConfig),
     AllowTag(AllowTagConfig),
@@ -26,64 +28,77 @@ pub enum MiddlewareConfig {
     TagCardinalityLimit(TagCardinalityLimitConfig),
 }
 
-#[derive(Debug, Deserialize, PartialEq)]
+#[cfg_attr(feature = "cli", derive(Deserialize))]
+#[derive(Debug, PartialEq)]
 pub struct DenyTagConfig {
     pub tags: Vec<String>,
 }
 
-#[derive(Debug, Deserialize, PartialEq)]
+#[cfg_attr(feature = "cli", derive(Deserialize))]
+#[derive(Debug, PartialEq)]
 pub struct AllowTagConfig {
     pub tags: Vec<String>,
 }
 
-#[derive(Debug, Deserialize, Eq, Hash, PartialEq)]
+#[cfg_attr(feature = "cli", derive(Deserialize))]
+#[derive(Debug, PartialEq)]
 pub struct LimitConfig {
     pub window: u16, // in seconds
     pub limit: u64,
 }
 
-#[derive(Debug, Deserialize, PartialEq)]
+#[cfg_attr(feature = "cli", derive(Deserialize))]
+#[derive(Debug, PartialEq)]
 pub struct CardinalityLimitConfig {
     pub limits: Vec<LimitConfig>,
 }
 
-#[derive(Debug, Deserialize, Eq, Hash, PartialEq)]
+#[cfg_attr(feature = "cli", derive(Deserialize))]
+#[derive(Debug, Eq, Hash, PartialEq)]
 pub struct TagLimitConfig {
     pub tag: String,
     pub limit: u64,
 }
 
-#[derive(Debug, Deserialize, PartialEq)]
+#[cfg_attr(feature = "cli", derive(Deserialize))]
+#[derive(Debug, PartialEq)]
 pub struct TagCardinalityLimitConfig {
     pub limits: Vec<TagLimitConfig>,
 }
 
-#[derive(Debug, Deserialize, PartialEq)]
+#[cfg_attr(feature = "cli", derive(Deserialize))]
+#[derive(Debug, PartialEq)]
 pub struct AddTagConfig {
     pub tags: Vec<String>,
 }
 
+#[cfg(feature = "cli")]
 fn default_true() -> bool {
     true
 }
+
+#[cfg(feature = "cli")]
 fn default_flush_interval() -> u64 {
     1
 }
+
+#[cfg(feature = "cli")]
 fn default_flush_offset() -> i64 {
     0
 }
 
-#[derive(Debug, Deserialize, PartialEq)]
+#[cfg_attr(feature = "cli", derive(Deserialize))]
+#[derive(Debug, PartialEq)]
 pub struct AggregateMetricsConfig {
-    #[serde(default = "default_true")]
+    #[cfg_attr(feature = "cli", serde(default = "default_true"))]
     pub aggregate_counters: bool,
-    #[serde(default = "default_true")]
+    #[cfg_attr(feature = "cli", serde(default = "default_true"))]
     pub aggregate_gauges: bool,
-    #[serde(default = "default_flush_interval")]
+    #[cfg_attr(feature = "cli", serde(default = "default_flush_interval"))]
     pub flush_interval: u64,
-    #[serde(default = "default_flush_offset")]
+    #[cfg_attr(feature = "cli", serde(default = "default_flush_offset"))]
     pub flush_offset: i64,
-    #[serde(default)]
+    #[cfg_attr(feature = "cli", serde(default))]
     pub max_map_size: Option<usize>,
 }
 
