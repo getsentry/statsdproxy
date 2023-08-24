@@ -58,7 +58,6 @@ where
                     continue;
                 }
 
-                //let raw = raw.to_owned();
                 metric_data.extend(raw);
                 let mut metric = Metric::new(metric_data);
 
