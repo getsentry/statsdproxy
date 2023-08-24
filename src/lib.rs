@@ -1,7 +1,7 @@
-pub mod middleware;
-pub mod config;
 #[cfg(feature = "cadence")]
 pub mod cadence;
+pub mod config;
+pub mod middleware;
 
 mod testutils;
 mod types;
