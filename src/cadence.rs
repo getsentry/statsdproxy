@@ -37,7 +37,7 @@ where
         let cooked_metric = Metric::new(raw_metric.as_bytes().to_vec());
         let mut next = self.next.lock().unwrap();
         next.poll();
-        next.submit(cooked_metric);
+        next.submit(&mut cooked_metric);
 
         Ok(raw_metric.len())
     }
