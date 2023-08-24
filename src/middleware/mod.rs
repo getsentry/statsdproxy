@@ -13,6 +13,7 @@ pub mod aggregate;
 pub mod allow_tag;
 pub mod cardinality_limit;
 pub mod deny_tag;
+pub mod tag_cardinality_limit;
 
 const BUFSIZE: usize = 8192;
 

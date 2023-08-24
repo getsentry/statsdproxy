@@ -56,6 +56,11 @@ fn main() -> Result<(), Error> {
             config::MiddlewareConfig::AddTag(config) => {
                 client = Box::new(middleware::add_tag::AddTag::new(config, client));
             }
+            config::MiddlewareConfig::TagCardinalityLimit(config) => {
+                client = Box::new(middleware::tag_cardinality_limit::TagCardinalityLimit::new(
+                    config, client,
+                ))
+            }
         }
     }
 

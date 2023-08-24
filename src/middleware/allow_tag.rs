@@ -43,7 +43,7 @@ where
 
         if rewrite_tags {
             let mut rewriten_metric = metric.clone();
-            rewriten_metric.set_tags_from_iter(tags_to_keep.iter());
+            rewriten_metric.set_tags_from_iter(tags_to_keep.into_iter());
             self.next.submit(rewriten_metric)
         } else {
             self.next.submit(metric)
