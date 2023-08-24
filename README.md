@@ -1,15 +1,27 @@
 # statsdproxy
 
 A proxy for transforming, pre-aggregating and routing statsd metrics, like
-[Veneur](https://github.com/stripe/veneur) or [Vector](https://vector.dev/).
-The goal is minimal overhead and no loss of information during parsing.
+[Veneur](https://github.com/stripe/veneur), [Vector](https://vector.dev/) or
+[Brubeck](https://github.com/github/brubeck).
+
+Currently supports the following transformations:
+
+* Deny- or allow-listing of specific tag keys or metric names
+* Adding hardcoded tags to all metrics
+* Basic cardinality limiting, tracking the number of distinct tag values per
+  key or the number of overall timeseries (=combinations of metrics and tags).
+
+See `example.yml` for details.
+
+A major goal is minimal overhead and **no loss of information** due to
+unnecessarily strict parsing. Statsdproxy intends to orient itself around
+[dogstatsd](https://docs.datadoghq.com/developers/dogstatsd/datagram_shell/?tab=metrics)
+protocol but should gracefully degrade for other statsd dialects, in that those
+metrics and otherwise unparseable bytes will be forwarded as-is.
 
 **This is not a Sentry product**, not deployed in any sort of production
 environment, but a side-project done during Hackweek.
 
-It intends to implement
-[dogstatsd](https://docs.datadoghq.com/developers/dogstatsd/datagram_shell/?tab=metrics)
-protocol but should gracefully degrade for other statsd dialects.
 
 ## Basic usage
 

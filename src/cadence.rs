@@ -1,4 +1,4 @@
-use std::{sync::Mutex, io};
+use std::{io, sync::Mutex};
 
 use cadence::MetricSink;
 
@@ -10,17 +10,19 @@ pub struct StatsdProxyMetricSink<M> {
 
 impl<M> StatsdProxyMetricSink<M>
 where
-    M: Middleware
+    M: Middleware,
 {
     pub fn new(next: M) -> StatsdProxyMetricSink<M> {
-        StatsdProxyMetricSink { next: Mutex::new(next) }
+        StatsdProxyMetricSink {
+            next: Mutex::new(next),
+        }
     }
 }
 
 impl<M> MetricSink for StatsdProxyMetricSink<M>
 where
-    M: Middleware
-{    
+    M: Middleware,
+{
     // FIXME: There's a bit of an impedance mismatch between Cadence's metric sinks and our middleware interface,
     // so this is not entirely correct:
     //
@@ -30,7 +32,7 @@ where
     //
     // 2) `flush` is supposed to force a flush of all buffered metrics, but there's no way to ask the
     // next middleware to do this.
-    
+
     fn emit(&self, raw_metric: &str) -> io::Result<usize> {
         let cooked_metric = Metric::new(raw_metric.as_bytes().to_vec());
         let mut next = self.next.lock().unwrap();
@@ -53,9 +55,9 @@ mod tests {
     use std::sync::RwLock;
 
     use super::*;
+    use crate::testutils::FnStep;
     use cadence::prelude::*;
     use cadence::StatsdClient;
-    use crate::testutils::FnStep;
 
     #[test]
     fn basic() {

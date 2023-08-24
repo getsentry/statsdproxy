@@ -1,10 +1,5 @@
 #[cfg(feature = "cli")]
-use {
-    anyhow::Error,
-    serde::Deserialize,
-    std::fs::File,
-};
-
+use {anyhow::Error, serde::Deserialize, std::fs::File};
 
 #[cfg_attr(feature = "cli", derive(Deserialize))]
 #[derive(Debug, PartialEq, Default)]
@@ -30,6 +25,7 @@ pub enum MiddlewareConfig {
     CardinalityLimit(CardinalityLimitConfig),
     AggregateMetrics(AggregateMetricsConfig),
     AddTag(AddTagConfig),
+    TagCardinalityLimit(TagCardinalityLimitConfig),
 }
 
 #[cfg_attr(feature = "cli", derive(Deserialize))]
@@ -55,6 +51,19 @@ pub struct LimitConfig {
 #[derive(Debug, PartialEq)]
 pub struct CardinalityLimitConfig {
     pub limits: Vec<LimitConfig>,
+}
+
+#[cfg_attr(feature = "cli", derive(Deserialize))]
+#[derive(Debug, Eq, Hash, PartialEq)]
+pub struct TagLimitConfig {
+    pub tag: String,
+    pub limit: u64,
+}
+
+#[cfg_attr(feature = "cli", derive(Deserialize))]
+#[derive(Debug, PartialEq)]
+pub struct TagCardinalityLimitConfig {
+    pub limits: Vec<TagLimitConfig>,
 }
 
 #[cfg_attr(feature = "cli", derive(Deserialize))]
