@@ -138,7 +138,7 @@ where
         Ok(Server { socket, middleware })
     }
 
-    pub fn run(self) -> Result<(), Error> {
+    pub fn run(mut self) -> Result<(), Error> {
         // if sending this large udp dataframes happens to work randomly, we should not be the
         // one that breaks that setup.
         let mut buf = [0; 65535];
@@ -152,7 +152,7 @@ where
         signal_hook::flag::register(signal_hook::consts::SIGTERM, Arc::clone(&stop))?;
 
         while !stop.load(Ordering::Relaxed) {
-            let (_num_bytes, _app_socket) = match self.socket.recv_from(buf.as_mut_slice()) {
+            let (num_bytes, _app_socket) = match self.socket.recv_from(buf.as_mut_slice()) {
                 Err(err) => match err.kind() {
                     // Different timeout errors might be raised depending on platform.
                     ErrorKind::WouldBlock | ErrorKind::TimedOut => continue,
@@ -160,25 +160,20 @@ where
                 },
                 Ok(s) => s,
             };
-            // for raw in buf[..num_bytes].split(|&x| x == b'\n') {
-            //     if raw.is_empty() {
-            //         continue;
-            //     }
+            for raw in buf[..num_bytes].split(|&x| x == b'\n') {
+                if raw.is_empty() {
+                    continue;
+                }
 
-            //     let raw = raw.to_owned();
-            //     let metric = Metric::new(raw);
+                let raw = raw.to_owned();
+                let metric = Metric::new(raw);
 
-            //     let mut carryover_metric = Some(metric);
-            //     while let Some(metric) = carryover_metric.take() {
-            //         if let Err(Overloaded { metric }) = self
-            //             .middleware
-            //             .poll()
-            //             .and_then(|()| self.middleware.submit(metric))
-            //         {
-            //             carryover_metric = metric;
-            //         }
-            //     }
-            // }
+                let mut carryover_metric = Some(metric);
+                while let Some(metric) = carryover_metric.take() {
+                    self.middleware.poll();
+                    self.middleware.submit(metric);
+                }
+            }
         }
         Ok(())
     }
