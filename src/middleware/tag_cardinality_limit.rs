@@ -50,9 +50,10 @@ where
 
     fn submit(&mut self, metric: Metric) -> Result<(), Overloaded> {
         let mut rewritten_metric = metric.clone();
+        let mut tags_to_drop: Vec<(Vec<u8>, Vec<u8>)> = Vec::new();
+
         rewritten_metric.set_tags_from_iter(metric.tags_iter().filter(|tag| {
             let tag_name = tag.name();
-            let mut keep_tag = true;
 
             if let Some(tag_value) = tag.value() {
                 for quota in self.quotas.iter() {
@@ -61,26 +62,24 @@ where
                         && (quota.values_seen.len() >= quota.limit as usize
                             && !quota.values_seen.contains(tag_value))
                     {
-                        // Drop the tags that don't fit in quota
-                        keep_tag = false;
-                        break;
+                        let data: (Vec<u8>, Vec<u8>) = (tag_name.to_vec(), tag_value.to_vec());
+                        tags_to_drop.push(data);
+                        return false;
                     }
-                }
-                if keep_tag {
-                    return true;
                 }
             }
 
-            false
+            // Tag fits in quota, or has no value -- keep it
+            true
         }));
 
         self.next.submit(rewritten_metric)?;
 
         // Increment quotas
-        for tag in metric.tags_iter() {
+        for (name, value) in tags_to_drop {
             for quota in self.quotas.iter_mut() {
-                if quota.tag == "*" || quota.tag.as_bytes() == tag.name() {
-                    quota.values_seen.insert(tag.value().unwrap().to_vec());
+                if quota.tag == "*" || quota.tag.as_bytes() == name {
+                    quota.values_seen.insert(value.clone());
                 }
             }
         }
@@ -128,6 +127,15 @@ mod tests {
         assert_eq!(
             results.borrow()[1],
             Metric::new(b"users.online:1|c".to_vec())
+        );
+
+        limiter
+            .submit(Metric::new(b"users.online:1|c|#env".to_vec()))
+            .unwrap();
+        // Tag without value is not limited
+        assert_eq!(
+            results.borrow()[2],
+            Metric::new(b"users.online:1|c|#env".to_vec())
         );
     }
 }
