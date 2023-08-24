@@ -120,7 +120,7 @@ where
             metric_bytes.extend(value_bytes);
             metric_bytes.extend(&key.metric_bytes[key.insert_value_at..]);
 
-            self.next.submit(dbg!(Metric::new(metric_bytes)));
+            self.next.submit(dbg!(&mut Metric::new(metric_bytes)));
         }
     }
 }
@@ -159,8 +159,8 @@ where
         self.next.poll()
     }
 
-    fn submit(&mut self, metric: Metric) {
-        match self.insert_metric(&metric) {
+    fn submit(&mut self, metric: &mut Metric) {
+        match self.insert_metric(metric) {
             Ok(()) => {}
             Err(_) => {
                 // for now discard the parsing error, we might want to add info logging here
@@ -188,8 +188,8 @@ mod tests {
             max_map_size: None,
         };
         let results = RefCell::new(vec![]);
-        let next = FnStep(|metric| {
-            results.borrow_mut().push(metric);
+        let next = FnStep(|metric: &mut Metric| {
+            results.borrow_mut().push(metric.clone());
         });
         let mut aggregator = AggregateMetrics::new(config, next);
 
@@ -197,7 +197,7 @@ mod tests {
 
         aggregator.poll();
 
-        aggregator.submit(Metric::new(
+        aggregator.submit(&mut Metric::new(
             b"users.online:1|c|@0.5|#country:china".to_vec(),
         ));
 
@@ -205,7 +205,7 @@ mod tests {
 
         aggregator.poll();
 
-        aggregator.submit(Metric::new(
+        aggregator.submit(&mut Metric::new(
             b"users.online:1|c|@0.5|#country:china".to_vec(),
         ));
 
@@ -233,8 +233,8 @@ mod tests {
             max_map_size: None,
         };
         let results = RefCell::new(vec![]);
-        let next = FnStep(|metric| {
-            results.borrow_mut().push(metric);
+        let next = FnStep(|metric: &mut Metric| {
+            results.borrow_mut().push(metric.clone());
         });
         let mut aggregator = AggregateMetrics::new(config, next);
 
@@ -242,7 +242,7 @@ mod tests {
 
         aggregator.poll();
 
-        aggregator.submit(Metric::new(
+        aggregator.submit(&mut Metric::new(
             b"users.online:3|g|@0.5|#country:china".to_vec(),
         ));
 
@@ -250,7 +250,7 @@ mod tests {
 
         aggregator.poll();
 
-        aggregator.submit(Metric::new(
+        aggregator.submit(&mut Metric::new(
             b"users.online:2|g|@0.5|#country:china".to_vec(),
         ));
 

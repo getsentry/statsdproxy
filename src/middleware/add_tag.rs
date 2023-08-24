@@ -26,7 +26,7 @@ where
         self.next.poll()
     }
 
-    fn submit(&mut self, mut metric: Metric) {
+    fn submit(&mut self, metric: &mut Metric) {
         match metric.tags() {
             Some(tags) => {
                 let mut tag_buffer: Vec<u8> = Vec::new();
@@ -70,13 +70,13 @@ mod tests {
                 tags: vec!["env:prod".to_string()],
             };
             let results = RefCell::new(vec![]);
-            let next = FnStep(|metric| {
-                results.borrow_mut().push(metric);
+            let next = FnStep(|metric: &mut Metric| {
+                results.borrow_mut().push(metric.clone());
             });
 
             let mut middleware = AddTag::new(config, next);
-            let metric = Metric::new(test_case.0.as_bytes().to_vec());
-            middleware.submit(metric);
+            let mut metric = Metric::new(test_case.0.as_bytes().to_vec());
+            middleware.submit(&mut metric);
             assert_eq!(results.borrow().len(), 1);
             let updated_metric = Metric::new(results.borrow_mut()[0].raw.clone());
             assert_eq!(updated_metric.raw, test_case.1.as_bytes());

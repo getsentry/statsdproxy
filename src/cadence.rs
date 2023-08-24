@@ -34,10 +34,10 @@ where
     // next middleware to do this.
 
     fn emit(&self, raw_metric: &str) -> io::Result<usize> {
-        let cooked_metric = Metric::new(raw_metric.as_bytes().to_vec());
+        let mut cooked_metric = Metric::new(raw_metric.as_bytes().to_vec());
         let mut next = self.next.lock().unwrap();
         next.poll();
-        next.submit(cooked_metric);
+        next.submit(&mut cooked_metric);
 
         Ok(raw_metric.len())
     }
@@ -61,8 +61,8 @@ mod tests {
     fn basic() {
         let results = Arc::new(RwLock::new(vec![]));
         let results2 = results.clone();
-        let next = FnStep(move |metric| {
-            results.write().unwrap().push(metric);
+        let next = FnStep(move |metric: &mut Metric| {
+            results.write().unwrap().push(metric.clone());
         });
 
         let sink = StatsdProxyMetricSink::new(next);

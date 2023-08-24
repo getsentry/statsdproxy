@@ -39,6 +39,7 @@ where
         signal_hook::flag::register(signal_hook::consts::SIGINT, Arc::clone(&stop))?;
         signal_hook::flag::register(signal_hook::consts::SIGTERM, Arc::clone(&stop))?;
 
+        let mut metric_data = Vec::new();
         while !stop.load(Ordering::Relaxed) {
             let (num_bytes, _app_socket) = match self.socket.recv_from(buf.as_mut_slice()) {
                 Err(err) => match err.kind() {
@@ -57,11 +58,14 @@ where
                     continue;
                 }
 
-                let raw = raw.to_owned();
-                let metric = Metric::new(raw);
+                //let raw = raw.to_owned();
+                metric_data.extend(raw);
+                let mut metric = Metric::new(metric_data);
 
                 self.middleware.poll();
-                self.middleware.submit(metric);
+                self.middleware.submit(&mut metric);
+                metric_data = metric.take();
+                metric_data.clear();
             }
         }
         Ok(())

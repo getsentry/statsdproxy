@@ -143,8 +143,8 @@ where
         self.next.poll()
     }
 
-    fn submit(&mut self, metric: Metric) {
-        let metric_hash = self.hash_metric(&metric);
+    fn submit(&mut self, metric: &mut Metric) {
+        let metric_hash = self.hash_metric(metric);
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap()
@@ -188,23 +188,31 @@ mod tests {
         };
 
         let results = RefCell::new(vec![]);
-        let next = FnStep(|metric| {
-            results.borrow_mut().push(metric);
+        let next = FnStep(|metric: &mut Metric| {
+            results.borrow_mut().push(metric.clone());
         });
         let mut limiter = CardinalityLimit::new(config, next);
 
-        limiter.submit(Metric::new(b"users.online:1|c|#country:china".to_vec()));
+        limiter.submit(&mut Metric::new(
+            b"users.online:1|c|#country:china".to_vec(),
+        ));
         assert_eq!(results.borrow_mut().len(), 1);
 
-        limiter.submit(Metric::new(b"servers.online:1|c|#country:china".to_vec()));
+        limiter.submit(&mut Metric::new(
+            b"servers.online:1|c|#country:china".to_vec(),
+        ));
         assert_eq!(results.borrow_mut().len(), 2);
 
         // we have already ingested two distinct timeseries, this one should be dropped.
-        limiter.submit(Metric::new(b"servers.online:1|c|#country:japan".to_vec()));
+        limiter.submit(&mut Metric::new(
+            b"servers.online:1|c|#country:japan".to_vec(),
+        ));
         assert_eq!(results.borrow_mut().len(), 2);
 
         // A metric with the same hash as an old one within `window` should pass through.
-        limiter.submit(Metric::new(b"users.online:1|c|#country:china".to_vec()));
+        limiter.submit(&mut Metric::new(
+            b"users.online:1|c|#country:china".to_vec(),
+        ));
         assert_eq!(results.borrow_mut().len(), 3);
     }
 }

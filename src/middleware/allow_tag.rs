@@ -29,7 +29,7 @@ where
         self.next.poll()
     }
 
-    fn submit(&mut self, metric: Metric) {
+    fn submit(&mut self, metric: &mut Metric) {
         let mut tags_to_keep = Vec::new();
         let mut rewrite_tags = false;
         for tag in metric.tags_iter() {
@@ -44,7 +44,7 @@ where
         if rewrite_tags {
             let mut rewriten_metric = metric.clone();
             rewriten_metric.set_tags_from_iter(tags_to_keep.into_iter());
-            self.next.submit(rewriten_metric)
+            self.next.submit(&mut rewriten_metric)
         } else {
             self.next.submit(metric)
         }
@@ -69,12 +69,12 @@ mod tests {
         };
 
         let results = RefCell::new(vec![]);
-        let next = FnStep(|metric| {
-            results.borrow_mut().push(metric);
+        let next = FnStep(|metric: &mut Metric| {
+            results.borrow_mut().push(metric.clone());
         });
         let mut tag_allower = AllowTag::new(config, next);
 
-        tag_allower.submit(Metric::new(
+        tag_allower.submit(&mut Metric::new(
             b"servers.online:1|c|#country:china,arch:arm64".to_vec(),
         ));
         assert_eq!(
@@ -82,7 +82,7 @@ mod tests {
             Metric::new(b"servers.online:1|c|#country:china,arch:arm64".to_vec())
         );
 
-        tag_allower.submit(Metric::new(
+        tag_allower.submit(&mut Metric::new(
             b"servers.online:1|c|#machine_type:large,country:china,zone:a,arch:arm64,region:east"
                 .to_vec(),
         ));
