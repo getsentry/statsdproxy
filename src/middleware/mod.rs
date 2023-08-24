@@ -25,7 +25,7 @@ impl Middleware for Box<dyn Middleware> {
     fn poll(&mut self) {
         self.as_mut().poll()
     }
-    fn submit(&mut self, metric: Metric) {
+    fn submit(&mut self, metric: &mut Metric) {
         self.as_mut().submit(metric)
     }
 }
@@ -35,7 +35,7 @@ pub trait Middleware {
         Ok(())
     }
     fn poll(&mut self) {}
-    fn submit(&mut self, metric: Metric);
+    fn submit(&mut self, metric: &mut Metric);
 }
 
 pub struct Upstream {
@@ -99,7 +99,7 @@ impl Drop for Upstream {
 }
 
 impl Middleware for Upstream {
-    fn submit(&mut self, metric: Metric) {
+    fn submit(&mut self, metric: &mut Metric) {
         let metric_len = metric.raw.len();
         if metric_len + 1 > BUFSIZE - self.buf_used {
             // Message bigger than space left in buffer. Flush the buffer.

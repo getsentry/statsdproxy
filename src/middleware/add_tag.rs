@@ -26,7 +26,7 @@ where
         self.next.poll()
     }
 
-    fn submit(&mut self, mut metric: Metric) {
+    fn submit(&mut self, mut metric: &mut Metric) {
         match metric.tags() {
             Some(tags) => {
                 let mut tag_buffer: Vec<u8> = Vec::new();
@@ -40,7 +40,7 @@ where
             }
         }
 
-        self.next.submit(metric)
+        self.next.submit(&mut metric)
     }
 
     fn join(&mut self) -> Result<(), Error> {
@@ -76,7 +76,7 @@ mod tests {
 
             let mut middleware = AddTag::new(config, next);
             let metric = Metric::new(test_case.0.as_bytes().to_vec());
-            middleware.submit(metric);
+            middleware.submit(&mut metric);
             assert_eq!(results.borrow().len(), 1);
             let updated_metric = Metric::new(results.borrow_mut()[0].raw.clone());
             assert_eq!(updated_metric.raw, test_case.1.as_bytes());

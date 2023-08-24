@@ -175,6 +175,10 @@ impl Metric {
 
         self.set_tags(&tag_buffer[0..tag_buffer.len()]);
     }
+
+    pub fn take(self) -> Vec<u8> {
+        self.raw
+    }
 }
 
 #[cfg(test)]
