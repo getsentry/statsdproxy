@@ -3,10 +3,9 @@ use clap::Parser;
 
 mod config;
 mod middleware;
-mod types;
-
 #[cfg(test)]
 mod testutils;
+mod types;
 
 use middleware::{Server, Upstream};
 
@@ -27,7 +26,13 @@ struct Args {
 }
 
 fn main() -> Result<(), Error> {
+    env_logger::init();
+
     let args = Args::parse();
+
+    if args.config_path.is_none() {
+        log::warn!("No config file specified. No middlewares will be used.");
+    }
 
     let config = args
         .config_path
@@ -64,7 +69,8 @@ fn main() -> Result<(), Error> {
         }
     }
 
-    let server = Server::new(args.listen, client)?;
+    let server = Server::new(args.listen.clone(), client)?;
+    log::info!("Listening on {}", args.listen);
 
     server.run()?;
 

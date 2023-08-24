@@ -4,7 +4,6 @@ use crate::types::Metric;
 use anyhow::Error;
 
 pub struct AddTag<M> {
-    #[allow(dead_code)]
     tags: Vec<u8>,
     next: M,
 }

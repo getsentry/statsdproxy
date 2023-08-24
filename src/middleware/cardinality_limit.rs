@@ -154,6 +154,7 @@ where
             quota.remove_old_keys(now);
 
             if !quota.does_metric_fit(now, metric_hash) {
+                log::debug!("Dropping metric {:?}", metric.name());
                 return;
             }
         }

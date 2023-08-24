@@ -5,7 +5,6 @@ use anyhow::Error;
 use std::collections::HashSet;
 
 pub struct AllowTag<M> {
-    #[allow(dead_code)]
     tags: HashSet<Vec<u8>>,
     next: M,
 }
@@ -37,6 +36,7 @@ where
             if self.tags.contains(tag.name()) {
                 tags_to_keep.push(tag);
             } else {
+                log::debug!("allow_tag: Dropping disallowed tag: {:?}", tag.name());
                 rewrite_tags = true;
             }
         }

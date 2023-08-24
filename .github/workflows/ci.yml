@@ -29,3 +29,13 @@ jobs:
       - name: Run tests
         run: |
           make test
+
+  library:
+    name: "Library-only build"
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v3
+        name: Checkout code
+      - name: Run tests
+        run: cargo build --no-default-features --lib --features cadence
