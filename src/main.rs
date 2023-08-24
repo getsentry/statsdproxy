@@ -7,7 +7,7 @@ mod middleware;
 mod testutils;
 mod types;
 
-use middleware::{Server, Upstream};
+use middleware::{server::Server, Upstream};
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
