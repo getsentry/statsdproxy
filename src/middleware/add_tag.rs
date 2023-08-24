@@ -70,12 +70,12 @@ mod tests {
                 tags: vec!["env:prod".to_string()],
             };
             let results = RefCell::new(vec![]);
-            let next = FnStep(|metric| {
-                results.borrow_mut().push(metric);
+            let next = FnStep(|metric: &mut Metric| {
+                results.borrow_mut().push(metric.clone());
             });
 
             let mut middleware = AddTag::new(config, next);
-            let metric = Metric::new(test_case.0.as_bytes().to_vec());
+            let mut metric = Metric::new(test_case.0.as_bytes().to_vec());
             middleware.submit(&mut metric);
             assert_eq!(results.borrow().len(), 1);
             let updated_metric = Metric::new(results.borrow_mut()[0].raw.clone());

@@ -188,8 +188,8 @@ mod tests {
             max_map_size: None,
         };
         let results = RefCell::new(vec![]);
-        let next = FnStep(|metric| {
-            results.borrow_mut().push(metric);
+        let next = FnStep(|metric: &mut Metric| {
+            results.borrow_mut().push(metric.clone());
         });
         let mut aggregator = AggregateMetrics::new(config, next);
 
@@ -233,8 +233,8 @@ mod tests {
             max_map_size: None,
         };
         let results = RefCell::new(vec![]);
-        let next = FnStep(|metric| {
-            results.borrow_mut().push(metric);
+        let next = FnStep(|metric: &mut Metric| {
+            results.borrow_mut().push(metric.clone());
         });
         let mut aggregator = AggregateMetrics::new(config, next);
 

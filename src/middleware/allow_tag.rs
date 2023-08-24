@@ -69,8 +69,8 @@ mod tests {
         };
 
         let results = RefCell::new(vec![]);
-        let next = FnStep(|metric| {
-            results.borrow_mut().push(metric);
+        let next = FnStep(|metric: &mut Metric| {
+            results.borrow_mut().push(metric.clone());
         });
         let mut tag_allower = AllowTag::new(config, next);
 
