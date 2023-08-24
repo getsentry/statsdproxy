@@ -36,7 +36,7 @@ where
 
         for tag in metric.tags_iter() {
             if self.tags.contains(tag.name()) {
-                log::debug!("Dropping tag {:?}", tag.name());
+                log::debug!("deny_tag: Dropping tag {:?}", tag.name());
                 rewrite_tags = true;
             } else {
                 tags_to_keep.push(tag);

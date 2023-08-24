@@ -63,7 +63,11 @@ where
                     {
                         // Drop the tags that don't fit in quota
                         keep_tag = false;
-                        log::debug!("Dropping tag {:?} with value {:?}", tag_name, tag_value);
+                        log::debug!(
+                            "tag_cardinality_limit: Dropping tag {:?} with value {:?}",
+                            tag_name,
+                            tag_value
+                        );
                         break;
                     }
                 }
@@ -84,8 +88,8 @@ where
                     quota.values_seen.insert(tag.value().unwrap().to_vec());
 
                     if quota.values_seen.len() == quota.limit as usize {
-                        log::debug!(
-                            "Tag {:?} reached cardinality limit of {}",
+                        log::info!(
+                            "tag_cardinality_limit: Tag {:?} reached cardinality limit of {}",
                             quota.tag,
                             quota.limit
                         );
