@@ -9,11 +9,7 @@ use std::{fmt, str};
 
 use anyhow::{Context, Error};
 
-use crate::{
-    config::AggregateMetricsConfig,
-    middleware::{Middleware, Overloaded},
-    types::Metric,
-};
+use crate::{config::AggregateMetricsConfig, middleware::Middleware, types::Metric};
 
 #[derive(Hash, Eq, PartialEq)]
 struct BucketKey {
@@ -109,12 +105,12 @@ where
         Ok(())
     }
 
-    fn flush_metrics(&mut self) -> Result<(), Overloaded> {
-        self.next.poll()?;
+    fn flush_metrics(&mut self) {
+        self.next.poll();
 
         let mut values_iter = self.metrics_map.drain();
 
-        let mut to_be_retried = Vec::new();
+        // let mut to_be_retried = Vec::new();
 
         for (key, value) in &mut values_iter {
             let value_bytes = match value {
@@ -126,20 +122,20 @@ where
             metric_bytes.extend(value_bytes);
             metric_bytes.extend(&key.metric_bytes[key.insert_value_at..]);
 
-            if let Err(Overloaded { .. }) = self.next.submit(dbg!(Metric::new(metric_bytes))) {
-                println!("overloaded");
-                to_be_retried.push((key, value));
-                break;
-            }
+            // if let Err(Overloaded { .. }) = self.next.submit(dbg!(Metric::new(metric_bytes))) {
+            //     println!("overloaded");
+            //     to_be_retried.push((key, value));
+            //     break;
+            // }
         }
 
-        if !to_be_retried.is_empty() {
-            to_be_retried.extend(values_iter);
-            self.metrics_map.extend(to_be_retried);
-            return Err(Overloaded { metric: None });
-        }
+        // if !to_be_retried.is_empty() {
+        //     to_be_retried.extend(values_iter);
+        //     self.metrics_map.extend(to_be_retried);
+        //     return Err(Overloaded { metric: None });
+        // }
 
-        Ok(())
+        // Ok(())
     }
 }
 
@@ -150,7 +146,7 @@ impl<M> Middleware for AggregateMetrics<M>
 where
     M: Middleware,
 {
-    fn poll(&mut self) -> Result<(), Overloaded> {
+    fn poll(&mut self) {
         #[cfg(test)]
         let overwrite_now = *CURRENT_TIME.lock().unwrap();
         #[cfg(not(test))]
@@ -170,19 +166,19 @@ where
             .expect("overflow when calculating with flush_interval");
 
         if self.last_flushed_at + self.config.flush_interval <= rounded_bucket {
-            self.flush_metrics().unwrap();
+            self.flush_metrics();
             self.last_flushed_at = rounded_bucket;
         }
 
         self.next.poll()
     }
 
-    fn submit(&mut self, metric: Metric) -> Result<(), Overloaded> {
+    fn submit(&mut self, metric: Metric) {
         match self.insert_metric(&metric) {
-            Ok(()) => Ok(()),
+            Ok(()) => {}
             Err(_) => {
                 // for now discard the parsing error, we might want to add info logging here
-                self.next.submit(metric)
+                self.next.submit(metric);
             }
         }
     }
@@ -208,35 +204,30 @@ mod tests {
         let results = RefCell::new(vec![]);
         let next = FnStep(|metric| {
             results.borrow_mut().push(metric);
-            Ok(())
         });
         let mut aggregator = AggregateMetrics::new(config, next);
 
         *CURRENT_TIME.lock().unwrap() = Some(0);
 
-        aggregator.poll().unwrap();
+        aggregator.poll();
 
-        aggregator
-            .submit(Metric::new(
-                b"users.online:1|c|@0.5|#country:china".to_vec(),
-            ))
-            .unwrap();
+        aggregator.submit(Metric::new(
+            b"users.online:1|c|@0.5|#country:china".to_vec(),
+        ));
 
         *CURRENT_TIME.lock().unwrap() = Some(1);
 
-        aggregator.poll().unwrap();
+        aggregator.poll();
 
-        aggregator
-            .submit(Metric::new(
-                b"users.online:1|c|@0.5|#country:china".to_vec(),
-            ))
-            .unwrap();
+        aggregator.submit(Metric::new(
+            b"users.online:1|c|@0.5|#country:china".to_vec(),
+        ));
 
         assert_eq!(results.borrow_mut().len(), 0);
 
         *CURRENT_TIME.lock().unwrap() = Some(11);
 
-        aggregator.poll().unwrap();
+        aggregator.poll();
 
         assert_eq!(
             results.borrow_mut().as_slice(),
@@ -258,35 +249,30 @@ mod tests {
         let results = RefCell::new(vec![]);
         let next = FnStep(|metric| {
             results.borrow_mut().push(metric);
-            Ok(())
         });
         let mut aggregator = AggregateMetrics::new(config, next);
 
         *CURRENT_TIME.lock().unwrap() = Some(0);
 
-        aggregator.poll().unwrap();
+        aggregator.poll();
 
-        aggregator
-            .submit(Metric::new(
-                b"users.online:3|g|@0.5|#country:china".to_vec(),
-            ))
-            .unwrap();
+        aggregator.submit(Metric::new(
+            b"users.online:3|g|@0.5|#country:china".to_vec(),
+        ));
 
         *CURRENT_TIME.lock().unwrap() = Some(1);
 
-        aggregator.poll().unwrap();
+        aggregator.poll();
 
-        aggregator
-            .submit(Metric::new(
-                b"users.online:2|g|@0.5|#country:china".to_vec(),
-            ))
-            .unwrap();
+        aggregator.submit(Metric::new(
+            b"users.online:2|g|@0.5|#country:china".to_vec(),
+        ));
 
         assert_eq!(results.borrow_mut().len(), 0);
 
         *CURRENT_TIME.lock().unwrap() = Some(11);
 
-        aggregator.poll().unwrap();
+        aggregator.poll();
 
         assert_eq!(
             results.borrow_mut().as_slice(),

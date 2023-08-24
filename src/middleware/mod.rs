@@ -17,19 +17,14 @@ pub mod tag_cardinality_limit;
 
 const BUFSIZE: usize = 8192;
 
-#[derive(Debug)]
-pub struct Overloaded {
-    pub metric: Option<Metric>,
-}
-
 impl Middleware for Box<dyn Middleware> {
     fn join(&mut self) -> Result<(), Error> {
         self.as_mut().join()
     }
-    fn poll(&mut self) -> Result<(), Overloaded> {
+    fn poll(&mut self) {
         self.as_mut().poll()
     }
-    fn submit(&mut self, metric: Metric) -> Result<(), Overloaded> {
+    fn submit(&mut self, metric: Metric) {
         self.as_mut().submit(metric)
     }
 }
@@ -38,10 +33,8 @@ pub trait Middleware {
     fn join(&mut self) -> Result<(), Error> {
         Ok(())
     }
-    fn poll(&mut self) -> Result<(), Overloaded> {
-        Ok(())
-    }
-    fn submit(&mut self, metric: Metric) -> Result<(), Overloaded>;
+    fn poll(&mut self) {}
+    fn submit(&mut self, metric: Metric);
 }
 
 pub struct Upstream {
@@ -90,7 +83,7 @@ impl Drop for Upstream {
 }
 
 impl Middleware for Upstream {
-    fn submit(&mut self, metric: Metric) -> Result<(), Overloaded> {
+    fn submit(&mut self, metric: Metric) {
         let now = SystemTime::now();
         let metric_len = metric.raw.len();
         if metric_len + 1 > BUFSIZE - self.buf_used
@@ -125,12 +118,12 @@ impl Middleware for Upstream {
             self.buffer[self.buf_used..self.buf_used + metric_len].copy_from_slice(&metric.raw);
             self.buf_used += metric_len;
         }
-        Ok(())
     }
 }
 
 pub struct Server<M> {
     socket: UdpSocket,
+    #[allow(dead_code)]
     middleware: M,
 }
 
@@ -145,7 +138,7 @@ where
         Ok(Server { socket, middleware })
     }
 
-    pub fn run(mut self) -> Result<(), Error> {
+    pub fn run(self) -> Result<(), Error> {
         // if sending this large udp dataframes happens to work randomly, we should not be the
         // one that breaks that setup.
         let mut buf = [0; 65535];
@@ -159,7 +152,7 @@ where
         signal_hook::flag::register(signal_hook::consts::SIGTERM, Arc::clone(&stop))?;
 
         while !stop.load(Ordering::Relaxed) {
-            let (num_bytes, _app_socket) = match self.socket.recv_from(buf.as_mut_slice()) {
+            let (_num_bytes, _app_socket) = match self.socket.recv_from(buf.as_mut_slice()) {
                 Err(err) => match err.kind() {
                     // Different timeout errors might be raised depending on platform.
                     ErrorKind::WouldBlock | ErrorKind::TimedOut => continue,
@@ -167,25 +160,25 @@ where
                 },
                 Ok(s) => s,
             };
-            for raw in buf[..num_bytes].split(|&x| x == b'\n') {
-                if raw.is_empty() {
-                    continue;
-                }
+            // for raw in buf[..num_bytes].split(|&x| x == b'\n') {
+            //     if raw.is_empty() {
+            //         continue;
+            //     }
 
-                let raw = raw.to_owned();
-                let metric = Metric::new(raw);
+            //     let raw = raw.to_owned();
+            //     let metric = Metric::new(raw);
 
-                let mut carryover_metric = Some(metric);
-                while let Some(metric) = carryover_metric.take() {
-                    if let Err(Overloaded { metric }) = self
-                        .middleware
-                        .poll()
-                        .and_then(|()| self.middleware.submit(metric))
-                    {
-                        carryover_metric = metric;
-                    }
-                }
-            }
+            //     let mut carryover_metric = Some(metric);
+            //     while let Some(metric) = carryover_metric.take() {
+            //         if let Err(Overloaded { metric }) = self
+            //             .middleware
+            //             .poll()
+            //             .and_then(|()| self.middleware.submit(metric))
+            //         {
+            //             carryover_metric = metric;
+            //         }
+            //     }
+            // }
         }
         Ok(())
     }

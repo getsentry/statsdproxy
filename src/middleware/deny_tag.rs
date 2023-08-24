@@ -1,5 +1,5 @@
 use crate::config::DenyTagConfig;
-use crate::middleware::{Middleware, Overloaded};
+use crate::middleware::Middleware;
 use crate::types::Metric;
 use anyhow::Error;
 use std::collections::HashSet;
@@ -26,11 +26,11 @@ impl<M> Middleware for DenyTag<M>
 where
     M: Middleware,
 {
-    fn poll(&mut self) -> Result<(), Overloaded> {
+    fn poll(&mut self) {
         self.next.poll()
     }
 
-    fn submit(&mut self, metric: Metric) -> Result<(), Overloaded> {
+    fn submit(&mut self, metric: Metric) {
         let mut tags_to_keep = Vec::new();
         let mut rewrite_tags = false;
 
@@ -72,25 +72,20 @@ mod tests {
         let results = RefCell::new(vec![]);
         let next = FnStep(|metric| {
             results.borrow_mut().push(metric);
-            Ok(())
         });
         let mut tag_denier = DenyTag::new(config, next);
 
-        tag_denier
-            .submit(Metric::new(
-                b"servers.online:1|c|#country:china,nope:foo".to_vec(),
-            ))
-            .unwrap();
+        tag_denier.submit(Metric::new(
+            b"servers.online:1|c|#country:china,nope:foo".to_vec(),
+        ));
         assert_eq!(
             results.borrow()[0],
             Metric::new(b"servers.online:1|c|#country:china".to_vec())
         );
 
-        tag_denier
-            .submit(Metric::new(
-                b"servers.online:1|c|#country:china,nope:foo,extra_stuff,,".to_vec(),
-            ))
-            .unwrap();
+        tag_denier.submit(Metric::new(
+            b"servers.online:1|c|#country:china,nope:foo,extra_stuff,,".to_vec(),
+        ));
         assert_eq!(
             results.borrow()[1],
             Metric::new(b"servers.online:1|c|#country:china,extra_stuff,,".to_vec())

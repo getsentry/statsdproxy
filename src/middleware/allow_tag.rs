@@ -1,5 +1,5 @@
 use crate::config::AllowTagConfig;
-use crate::middleware::{Middleware, Overloaded};
+use crate::middleware::Middleware;
 use crate::types::Metric;
 use anyhow::Error;
 use std::collections::HashSet;
@@ -26,11 +26,11 @@ impl<M> Middleware for AllowTag<M>
 where
     M: Middleware,
 {
-    fn poll(&mut self) -> Result<(), Overloaded> {
+    fn poll(&mut self) {
         self.next.poll()
     }
 
-    fn submit(&mut self, metric: Metric) -> Result<(), Overloaded> {
+    fn submit(&mut self, metric: Metric) {
         let mut tags_to_keep = Vec::new();
         let mut rewrite_tags = false;
         for tag in metric.tags_iter() {
@@ -71,23 +71,21 @@ mod tests {
         let results = RefCell::new(vec![]);
         let next = FnStep(|metric| {
             results.borrow_mut().push(metric);
-            Ok(())
         });
         let mut tag_allower = AllowTag::new(config, next);
 
-        tag_allower
-            .submit(Metric::new(
-                b"servers.online:1|c|#country:china,arch:arm64".to_vec(),
-            ))
-            .unwrap();
+        tag_allower.submit(Metric::new(
+            b"servers.online:1|c|#country:china,arch:arm64".to_vec(),
+        ));
         assert_eq!(
             results.borrow()[0],
             Metric::new(b"servers.online:1|c|#country:china,arch:arm64".to_vec())
         );
 
-        tag_allower
-            .submit(Metric::new(b"servers.online:1|c|#machine_type:large,country:china,zone:a,arch:arm64,region:east".to_vec()))
-            .unwrap();
+        tag_allower.submit(Metric::new(
+            b"servers.online:1|c|#machine_type:large,country:china,zone:a,arch:arm64,region:east"
+                .to_vec(),
+        ));
         assert_eq!(
             results.borrow()[1],
             Metric::new(b"servers.online:1|c|#country:china,arch:arm64".to_vec())
