@@ -57,3 +57,36 @@ DOGSTATSD_PORT = "8080"
 ```
 
 This will send metrics to port 8080.
+
+## Processing model
+
+This is the processing model used by the provided server. It should be respected
+by any usage of this software as a library.
+
+* The server receives metrics as bytes over udp, either singly or several joined
+  with `\n`.
+* For every metric received, the server invokes the `poll` method of the topmost
+  middleware.
+    * The middleware may use this invocation to do any needed internal
+      bookkeeping.
+    * The middleware should then invoke the `poll` method of the next
+      middleware, if any.
+* Once `poll` returns, the server invokes the `submit` method of the topmost
+  middleware with a mutable reference to the current metric.
+    * The middleware should process the metric.
+        * If processing was successful, and if appropriate to its function
+          (eg. a metric aggregator might hold onto metrics), the middleware
+          should `submit` the processed metric to the next middleware, returning
+          the result of this call.
+        * If processing was unsuccessful (eg. unknown StatsD dialect), the
+          unchanged metric should be treated as the processed metric, and passed
+          on or held as above.
+        * If a middleware becomes unable to handle more metrics during
+          processing, such that it cannot handle the current metric, it should
+          return `Overloaded`.
+    * If an overload is indicated, the server shall pause (TODO: how long)
+      before calling `submit` again with the same metric. (If an overload is
+      indicated too many times, maybe drop the metric?)
+* Separately, if no metric is received by the server for 1 second, it will
+  invoke the `poll` method of the topmost middleware. This invocation of `poll`
+  should be handled the same as above.
