@@ -52,6 +52,7 @@ impl Upstream {
         A: ToSocketAddrs,
     {
         let socket = UdpSocket::bind("0.0.0.0:0")?;
+        socket.set_nonblocking(true).unwrap();
         Ok(Upstream {
             socket: Arc::new(socket),
             upstream: upstream.to_socket_addrs()?.next().unwrap(),
