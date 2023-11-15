@@ -1,4 +1,4 @@
-use std::net::{ToSocketAddrs, UdpSocket};
+use std::net::{SocketAddr, ToSocketAddrs, UdpSocket};
 use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
@@ -40,6 +40,7 @@ pub trait Middleware {
 
 pub struct Upstream {
     socket: Arc<UdpSocket>,
+    upstream: SocketAddr,
     buffer: [u8; BUFSIZE],
     buf_used: usize,
     last_sent_at: SystemTime,
@@ -51,30 +52,32 @@ impl Upstream {
         A: ToSocketAddrs,
     {
         let socket = UdpSocket::bind("0.0.0.0:0")?;
-        // cloudflare says connect() allows some kernel-internal optimizations on Linux
-        // https://blog.cloudflare.com/everything-you-ever-wanted-to-know-about-udp-sockets-but-were-afraid-to-ask-part-1/
-        socket.connect(upstream)?;
         Ok(Upstream {
             socket: Arc::new(socket),
+            upstream: upstream.to_socket_addrs()?.next().unwrap(),
             buffer: [0; BUFSIZE],
             buf_used: 0,
             last_sent_at: UNIX_EPOCH,
         })
     }
 
+    fn send_buffer(&self, buf: &[u8]) {
+        match self.socket.send_to(buf, self.upstream) {
+            Ok(bytes) => {
+                if bytes != buf.len() {
+                    // UDP, so this should never happen, but...
+                    log::error!("tried to send {} bytes but only sent {}.", buf.len(), bytes);
+                }
+            }
+            Err(e) => {
+                log::error!("failed to send to UDP upstream: {}", e);
+            }
+        }
+    }
+
     fn flush(&mut self) {
         if self.buf_used > 0 {
-            let bytes = self
-                .socket
-                .send(&self.buffer[..self.buf_used])
-                .expect("failed to send to upstream");
-            if bytes != self.buf_used {
-                // UDP, so this should never happen, but...
-                panic!(
-                    "tried to send {} bytes but only sent {}.",
-                    self.buf_used, bytes
-                );
-            }
+            self.send_buffer(&self.buffer[..self.buf_used]);
             self.buf_used = 0;
         }
         self.last_sent_at = SystemTime::now(); // Annoyingly superfluous call to now().
@@ -107,17 +110,7 @@ impl Middleware for Upstream {
         }
         if metric_len > BUFSIZE {
             // Message too big for the entire buffer, send it and pray.
-            let bytes = self
-                .socket
-                .send(&metric.raw)
-                .expect("failed to send to upstream");
-            if bytes != metric_len {
-                // UDP, so this should never happen, but...
-                panic!(
-                    "tried to send {} bytes but only sent {}.",
-                    metric_len, bytes
-                );
-            }
+            self.send_buffer(&metric.raw);
         } else {
             // Put the message in the buffer, separating it from the previous message if any.
             if self.buf_used > 0 {
