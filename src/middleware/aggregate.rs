@@ -138,6 +138,7 @@ where
         #[cfg(not(test))]
         let overwrite_now = None;
 
+        #[allow(clippy::unnecessary_literal_unwrap)]
         let now = overwrite_now.unwrap_or_else(|| {
             SystemTime::now()
                 .duration_since(UNIX_EPOCH)
