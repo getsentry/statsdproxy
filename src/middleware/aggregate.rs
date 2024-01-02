@@ -7,8 +7,6 @@ use std::{
 };
 use std::{fmt, str};
 
-use anyhow::{Context, Error};
-
 use crate::{config::AggregateMetricsConfig, middleware::Middleware, types::Metric};
 
 #[derive(Hash, Eq, PartialEq)]
@@ -69,22 +67,22 @@ where
         }
     }
 
-    fn insert_metric(&mut self, metric: &Metric) -> Result<(), Error> {
+    fn insert_metric(&mut self, metric: &Metric) -> Result<(), &'static str> {
         let raw_value = metric
             .value()
             .and_then(|x| str::from_utf8(x).ok())
-            .ok_or(anyhow::anyhow!("failed to parse metric value as utf8"))?;
+            .ok_or("failed to parse metric value as utf8")?;
         let value = match metric
             .ty()
-            .ok_or(anyhow::anyhow!("failed to parse metric type"))?
+            .ok_or("failed to parse metric type")?
         {
             b"c" if self.config.aggregate_counters => {
-                BucketValue::Counter(raw_value.parse().context("failed to parse counter value")?)
+                BucketValue::Counter(raw_value.parse().map_err(|_| "failed to parse counter value")?)
             }
             b"g" if self.config.aggregate_gauges => {
-                BucketValue::Gauge(raw_value.parse().context("failed to parse gauge value")?)
+                BucketValue::Gauge(raw_value.parse().map_err(|_| "failed to parse gauge value")?)
             }
-            _ => anyhow::bail!("unsupported metric type"),
+            _ => return Err("unsupported metric type"),
         };
 
         let value_start = raw_value.as_ptr() as usize - metric.raw.as_ptr() as usize;
