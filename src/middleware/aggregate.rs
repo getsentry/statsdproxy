@@ -120,7 +120,7 @@ where
             metric_bytes.extend(value_bytes);
             metric_bytes.extend(&key.metric_bytes[key.insert_value_at..]);
 
-            self.next.submit(dbg!(&mut Metric::new(metric_bytes)));
+            self.next.submit(&mut Metric::new(metric_bytes));
         }
     }
 }
