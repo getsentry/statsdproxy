@@ -1,27 +1,33 @@
-use std::{io, sync::Mutex};
+use std::cell::RefCell;
+use std::io;
 
 use cadence::MetricSink;
+use thread_local::ThreadLocal;
 
 use crate::{middleware::Middleware, types::Metric};
 
-pub struct StatsdProxyMetricSink<M> {
-    next: Mutex<M>,
+pub struct StatsdProxyMetricSink<M: Send, F> {
+    next: ThreadLocal<RefCell<M>>,
+    middleware_factory: F,
 }
 
-impl<M> StatsdProxyMetricSink<M>
+impl<M, F> StatsdProxyMetricSink<M, F>
 where
-    M: Middleware,
+    M: Middleware + Send,
+    F: Fn() -> M,
 {
-    pub fn new(next: M) -> StatsdProxyMetricSink<M> {
+    pub fn new(middleware_factory: F) -> Self {
         StatsdProxyMetricSink {
-            next: Mutex::new(next),
+            next: ThreadLocal::new(),
+            middleware_factory,
         }
     }
 }
 
-impl<M> MetricSink for StatsdProxyMetricSink<M>
+impl<M, F> MetricSink for StatsdProxyMetricSink<M, F>
 where
-    M: Middleware,
+    M: Middleware + Send,
+    F: Fn() -> M,
 {
     // FIXME: There's a bit of an impedance mismatch between Cadence's metric sinks and our middleware interface,
     // so this is not entirely correct:
@@ -34,8 +40,11 @@ where
     // next middleware to do this.
 
     fn emit(&self, raw_metric: &str) -> io::Result<usize> {
+        let mut next = self
+            .next
+            .get_or(|| RefCell::new((self.middleware_factory)()))
+            .borrow_mut();
         let mut cooked_metric = Metric::new(raw_metric.as_bytes().to_vec());
-        let mut next = self.next.lock().unwrap();
         next.poll();
         next.submit(&mut cooked_metric);
 
@@ -61,11 +70,13 @@ mod tests {
     fn basic() {
         let results = Arc::new(RwLock::new(vec![]));
         let results2 = results.clone();
-        let next = FnStep(move |metric: &mut Metric| {
-            results.write().unwrap().push(metric.clone());
-        });
 
-        let sink = StatsdProxyMetricSink::new(next);
+        let sink = StatsdProxyMetricSink::new(move || {
+            let results = results.clone();
+            FnStep(move |metric: &mut Metric| {
+                results.write().unwrap().push(metric.clone());
+            })
+        });
         let client = StatsdClient::from_sink("test.metrics", sink);
 
         client.incr("test.counter").unwrap();
