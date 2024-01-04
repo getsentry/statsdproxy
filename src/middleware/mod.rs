@@ -16,7 +16,8 @@ pub mod tag_cardinality_limit;
 #[cfg(feature = "cli")]
 pub mod server;
 
-const BUFSIZE: usize = 8192;
+// hoisted from cadence crate -- we saw that with larger buffer size 8192, we were losing metrics
+const BUFSIZE: usize = 512;
 
 impl Middleware for Box<dyn Middleware> {
     fn join(&mut self) -> Result<(), Error> {
