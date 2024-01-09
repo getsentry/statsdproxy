@@ -4,4 +4,4 @@ pub mod config;
 pub mod middleware;
 
 mod testutils;
-mod types;
+pub mod types;
