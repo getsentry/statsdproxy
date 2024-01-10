@@ -1,0 +1,14 @@
+minVersion: 0.34.1
+github:
+  owner: getsentry
+  repo: statsdproxy
+changelogPolicy: auto
+
+statusProvider:
+  name: github
+artifactProvider:
+  name: none
+
+preReleaseCommand: bash ./scripts/bump-version.sh
+targets:
+  - name: crates
