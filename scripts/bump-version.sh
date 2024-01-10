@@ -13,5 +13,4 @@ function replace() {
     grep "$2" $3  # verify that replacement was successful
 }
 
-replace "version=\"[0-9.]+\"" "version=\"$NEW_VERSION\"" ./setup.py
 replace "^version = \".*?\"" "version = \"$NEW_VERSION\"" Cargo.toml
