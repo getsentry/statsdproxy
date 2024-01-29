@@ -24,6 +24,7 @@ pub enum MiddlewareConfig {
     AllowTag(AllowTagConfig),
     CardinalityLimit(CardinalityLimitConfig),
     AggregateMetrics(AggregateMetricsConfig),
+    Sample(SampleConfig),
     AddTag(AddTagConfig),
     TagCardinalityLimit(TagCardinalityLimitConfig),
 }
@@ -100,6 +101,12 @@ pub struct AggregateMetricsConfig {
     pub flush_offset: i64,
     #[cfg_attr(feature = "cli", serde(default))]
     pub max_map_size: Option<usize>,
+}
+
+#[cfg_attr(feature = "cli", derive(Deserialize))]
+#[derive(Debug, PartialEq)]
+pub struct SampleConfig {
+    pub sample_rate: f64,
 }
 
 #[cfg(test)]

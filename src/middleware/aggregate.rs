@@ -72,16 +72,17 @@ where
             .value()
             .and_then(|x| str::from_utf8(x).ok())
             .ok_or("failed to parse metric value as utf8")?;
-        let value = match metric
-            .ty()
-            .ok_or("failed to parse metric type")?
-        {
-            b"c" if self.config.aggregate_counters => {
-                BucketValue::Counter(raw_value.parse().map_err(|_| "failed to parse counter value")?)
-            }
-            b"g" if self.config.aggregate_gauges => {
-                BucketValue::Gauge(raw_value.parse().map_err(|_| "failed to parse gauge value")?)
-            }
+        let value = match metric.ty().ok_or("failed to parse metric type")? {
+            b"c" if self.config.aggregate_counters => BucketValue::Counter(
+                raw_value
+                    .parse()
+                    .map_err(|_| "failed to parse counter value")?,
+            ),
+            b"g" if self.config.aggregate_gauges => BucketValue::Gauge(
+                raw_value
+                    .parse()
+                    .map_err(|_| "failed to parse gauge value")?,
+            ),
             _ => return Err("unsupported metric type"),
         };
 

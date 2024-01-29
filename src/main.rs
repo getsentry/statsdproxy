@@ -2,7 +2,7 @@ use anyhow::Error;
 use clap::Parser;
 
 use statsdproxy::config;
-use statsdproxy::middleware::{self, server::Server, Upstream};
+use statsdproxy::middleware::{self, server::Server, upstream::Upstream};
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -60,6 +60,9 @@ fn main() -> Result<(), Error> {
                 client = Box::new(middleware::tag_cardinality_limit::TagCardinalityLimit::new(
                     config, client,
                 ))
+            }
+            config::MiddlewareConfig::Sample(config) => {
+                client = Box::new(middleware::sample::Sample::new(config, client))
             }
         }
     }
