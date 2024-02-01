@@ -12,3 +12,4 @@ artifactProvider:
 preReleaseCommand: bash ./scripts/bump-version.sh
 targets:
   - name: crates
+  - name: github
