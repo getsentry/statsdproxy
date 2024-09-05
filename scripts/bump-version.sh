@@ -14,3 +14,4 @@ function replace() {
 }
 
 replace "^version = \".*?\"" "version = \"$NEW_VERSION\"" Cargo.toml
+cargo update -p statsdproxy
