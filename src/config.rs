@@ -110,6 +110,7 @@ pub struct SampleConfig {
 }
 
 #[cfg(test)]
+#[cfg(feature = "cli")]
 mod tests {
     use super::*;
 

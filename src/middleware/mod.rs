@@ -9,8 +9,6 @@ pub mod cardinality_limit;
 pub mod deny_tag;
 pub mod mirror;
 pub mod sample;
-#[cfg(feature = "sentry")]
-pub mod sentry;
 pub mod tag_cardinality_limit;
 pub mod upstream;
 
