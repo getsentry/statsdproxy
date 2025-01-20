@@ -1,3 +1,4 @@
+use std::time::Duration;
 #[cfg(feature = "cli")]
 use {anyhow::Error, serde::Deserialize, std::fs::File};
 
@@ -79,8 +80,8 @@ fn default_true() -> bool {
 }
 
 #[cfg(feature = "cli")]
-fn default_flush_interval() -> u64 {
-    1
+fn default_flush_interval() -> Duration {
+    Duration::from_secs(1)
 }
 
 #[cfg(feature = "cli")]
@@ -96,7 +97,7 @@ pub struct AggregateMetricsConfig {
     #[cfg_attr(feature = "cli", serde(default = "default_true"))]
     pub aggregate_gauges: bool,
     #[cfg_attr(feature = "cli", serde(default = "default_flush_interval"))]
-    pub flush_interval: u64,
+    pub flush_interval: Duration,
     #[cfg_attr(feature = "cli", serde(default = "default_flush_offset"))]
     pub flush_offset: i64,
     #[cfg_attr(feature = "cli", serde(default))]
@@ -152,7 +153,7 @@ mod tests {
                     AggregateMetricsConfig {
                         aggregate_counters: true,
                         aggregate_gauges: true,
-                        flush_interval: 1,
+                        flush_interval: 1s,
                         flush_offset: 0,
                         max_map_size: None,
                     },
