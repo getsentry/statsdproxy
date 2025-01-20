@@ -39,7 +39,7 @@ pub struct MetricTag<'a> {
     pub name_value_sep_pos: Option<usize>,
 }
 
-impl<'a> MetricTag<'a> {
+impl MetricTag<'_> {
     pub fn new(bytes: &[u8]) -> MetricTag {
         MetricTag {
             raw: bytes,
@@ -58,7 +58,7 @@ impl<'a> MetricTag<'a> {
     }
 }
 
-impl<'a> fmt::Debug for MetricTag<'a> {
+impl fmt::Debug for MetricTag<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.name_value_sep_pos.is_none() {
             f.debug_struct("MetricTag")
@@ -85,7 +85,7 @@ impl<'a> Iterator for MetricTagIterator<'a> {
         let mut tag_pos_iter = remaining_tags.iter();
         let next_tag_sep_pos = tag_pos_iter.position(|&b| b == b',');
 
-        return if let Some(tag_sep_pos) = next_tag_sep_pos {
+        if let Some(tag_sep_pos) = next_tag_sep_pos {
             // Got a tag and more tags remain
             let tag = MetricTag::new(&remaining_tags[..tag_sep_pos]);
             self.remaining_tags = Some(&remaining_tags[tag_sep_pos + 1..]);
@@ -96,7 +96,7 @@ impl<'a> Iterator for MetricTagIterator<'a> {
             let tag = MetricTag::new(remaining_tags);
             self.remaining_tags = None;
             Some(tag)
-        };
+        }
     }
 }
 

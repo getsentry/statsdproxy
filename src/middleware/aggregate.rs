@@ -1,7 +1,7 @@
 #[cfg(test)]
 use std::sync::Mutex;
 
-use std::{collections::HashMap, i64, time::{SystemTime, UNIX_EPOCH}};
+use std::{collections::HashMap, time::{SystemTime, UNIX_EPOCH}};
 use std::{fmt, str};
 
 use crate::{config::AggregateMetricsConfig, middleware::Middleware, types::Metric};
