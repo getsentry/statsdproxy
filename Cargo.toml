@@ -21,6 +21,7 @@ log = "0.4"
 signal-hook = { version = "0.3.17", optional = true }
 thread_local = { version = "1.1.7", optional = true }
 rand = { version = "0.8.5", features = ["small_rng"] }
+humantime = { version = "2.1.0", optional = true }
 
 [features]
 default = ["cli"]
@@ -31,6 +32,7 @@ cli = [
   "dep:serde_yaml",
   "dep:signal-hook",
   "dep:env_logger",
+  "dep:humantime"
 ]
 
 # opt into cadence feature to enable cadence adapter

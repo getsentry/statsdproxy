@@ -37,7 +37,9 @@ middlewares:
     #
     # aggregate_gauges: true
 
-    # Flush the aggregate buffer every `flush_interval` seconds.
+    # Flush the aggregate buffer every `flush_interval` time units.
+    # By default, numbers without time unit suffixes are treated as seconds.
+    # Supported formats are defined here: https://docs.rs/humantime/latest/humantime/fn.parse_duration.html.
     # Defaults to 1 second.
     #
     # flush_interval: 1
