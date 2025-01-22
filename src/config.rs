@@ -120,9 +120,9 @@ pub struct SampleConfig {
 /// parsed using https://crates.io/crates/humantime
 #[cfg(feature = "cli")]
 fn deserialize_duration<'de, D>(deserializer: D) -> Result<Duration, D::Error> where D:Deserializer<'de> {
-    struct FlushDurationVisitor;
+    struct FLushIntervalVisitor;
 
-    impl Visitor<'_> for FlushDurationVisitor {
+    impl Visitor<'_> for FLushIntervalVisitor {
         type Value = Duration;
 
         fn expecting(&self, formatter: &mut Formatter) -> std::fmt::Result {
@@ -144,7 +144,7 @@ fn deserialize_duration<'de, D>(deserializer: D) -> Result<Duration, D::Error> w
         }
     }
 
-    deserializer.deserialize_any(FlushDurationVisitor)
+    deserializer.deserialize_any(FLushIntervalVisitor)
 }
 
 #[cfg(test)]
