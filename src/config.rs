@@ -1,6 +1,8 @@
 use std::fmt::Formatter;
 use std::time::Duration;
+#[cfg(feature = "cli")]
 use serde::de::Visitor;
+#[cfg(feature = "cli")]
 use serde::{Deserializer};
 #[cfg(feature = "cli")]
 use {anyhow::Error, serde::Deserialize, std::fs::File};
@@ -116,6 +118,7 @@ pub struct SampleConfig {
 /// Deserializes a number or a time-string into a Duration struct.
 /// Numbers without unit suffixes will be treated as seconds while suffixes will be
 /// parsed using https://crates.io/crates/humantime
+#[cfg(feature = "cli")]
 fn deserialize_duration<'de, D>(deserializer: D) -> Result<Duration, D::Error> where D:Deserializer<'de> {
     struct FlushDurationVisitor;
 
