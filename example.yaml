@@ -37,12 +37,10 @@ middlewares:
     #
     # aggregate_gauges: true
 
-    # Flush the aggregate buffer every `flush_interval` time units.
-    # By default, numbers without time unit suffixes are treated as seconds.
-    # Supported formats are defined here: https://docs.rs/humantime/latest/humantime/fn.parse_duration.html.
+    # Flush the aggregate buffer every `flush_interval` milliseconds.
     # Defaults to 1 second.
     #
-    # flush_interval: 1
+    # flush_interval: 1000
 
     # Normally the times at which metrics are flushed are approximately aligned
     # with a multiple of `flush_interval`. For example, a `flush_interval` of 1

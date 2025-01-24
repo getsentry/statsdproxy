@@ -126,21 +126,14 @@ fn deserialize_duration<'de, D>(deserializer: D) -> Result<Duration, D::Error> w
         type Value = Duration;
 
         fn expecting(&self, formatter: &mut Formatter) -> std::fmt::Result {
-            formatter.write_str("a non negative number with optional unit suffix")
+            formatter.write_str("a non negative number")
         }
 
         fn visit_u64<E>(self, v: u64) -> Result<Self::Value, E>
         where
             E: serde::de::Error,
         {
-            Ok(Duration::from_secs(v))
-        }
-
-        fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
-        where
-            E: serde::de::Error,
-        {
-            humantime::parse_duration(v).map_err(serde::de::Error::custom)
+            Ok(Duration::from_millis(v))
         }
     }
 
@@ -153,22 +146,11 @@ mod tests {
     use super::*;
 
     #[test]
-    fn flush_duration_without_suffix() {
+    fn flush_duration_milliseconds() {
         let yaml = r#"
             middlewares:
               - type: aggregate-metrics
-                flush_interval: 10
-        "#;
-        let config = serde_yaml::from_str::<Config>(yaml).unwrap();
-        assert!(matches!(&config.middlewares[0], MiddlewareConfig::AggregateMetrics(c) if c.flush_interval == Duration::from_secs(10)));
-    }
-
-    #[test]
-    fn flush_duration_ms_suffix() {
-        let yaml = r#"
-            middlewares:
-              - type: aggregate-metrics
-                flush_interval: 125ms
+                flush_interval: 125
         "#;
         let config = serde_yaml::from_str::<Config>(yaml).unwrap();
         assert!(matches!(&config.middlewares[0], MiddlewareConfig::AggregateMetrics(c) if c.flush_interval == Duration::from_millis(125)));
@@ -180,17 +162,6 @@ mod tests {
             middleware:
               - type: aggregate-metrics
                 flush_interval: -1000
-        "#;
-        let config = serde_yaml::from_str::<Config>(yaml);
-        assert!(config.is_err());
-    }
-
-    #[test]
-    fn flush_duration_negative_number_with_suffix() {
-        let yaml = r#"
-            middleware:
-              - type: aggregate-metrics
-                flush_interval: -125ms
         "#;
         let config = serde_yaml::from_str::<Config>(yaml);
         assert!(config.is_err());

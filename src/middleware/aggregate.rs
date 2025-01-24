@@ -6,7 +6,6 @@ use std::{fmt, str};
 
 use crate::{config::AggregateMetricsConfig, middleware::Middleware, types::Metric};
 
-
 #[derive(Hash, Eq, PartialEq)]
 struct BucketKey {
     // contains the raw metric bytes with the value stripped out

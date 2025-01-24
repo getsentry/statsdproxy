@@ -463,7 +463,6 @@ dependencies = [
  "clap",
  "crc32fast",
  "env_logger",
- "humantime",
  "insta",
  "log",
  "rand",
