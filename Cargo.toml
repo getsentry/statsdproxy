@@ -30,7 +30,7 @@ cli = [
   "dep:serde",
   "dep:serde_yaml",
   "dep:signal-hook",
-  "dep:env_logger"
+  "dep:env_logger",
 ]
 
 # opt into cadence feature to enable cadence adapter
