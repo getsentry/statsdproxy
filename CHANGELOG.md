@@ -1,3 +1,9 @@
+## 0.3.0
+
+### Various fixes & improvements
+
+- ref: use Duration for flush_interval (#55) by @Litarnus
+
 ## 0.2.0
 
 ### Various fixes & improvements
