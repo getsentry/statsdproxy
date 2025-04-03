@@ -1,3 +1,9 @@
+use std::fmt::Formatter;
+use std::time::Duration;
+#[cfg(feature = "cli")]
+use serde::de::Visitor;
+#[cfg(feature = "cli")]
+use serde::{Deserializer};
 #[cfg(feature = "cli")]
 use {anyhow::Error, serde::Deserialize, std::fs::File};
 
@@ -79,8 +85,8 @@ fn default_true() -> bool {
 }
 
 #[cfg(feature = "cli")]
-fn default_flush_interval() -> u64 {
-    1
+fn default_flush_interval() -> Duration {
+    Duration::from_secs(1)
 }
 
 #[cfg(feature = "cli")]
@@ -95,8 +101,8 @@ pub struct AggregateMetricsConfig {
     pub aggregate_counters: bool,
     #[cfg_attr(feature = "cli", serde(default = "default_true"))]
     pub aggregate_gauges: bool,
-    #[cfg_attr(feature = "cli", serde(default = "default_flush_interval"))]
-    pub flush_interval: u64,
+    #[cfg_attr(feature = "cli", serde(default = "default_flush_interval", deserialize_with="deserialize_duration"))]
+    pub flush_interval: Duration,
     #[cfg_attr(feature = "cli", serde(default = "default_flush_offset"))]
     pub flush_offset: i64,
     #[cfg_attr(feature = "cli", serde(default))]
@@ -109,10 +115,57 @@ pub struct SampleConfig {
     pub sample_rate: f64,
 }
 
+/// Deserializes a number or a time-string into a Duration struct.
+/// Numbers without unit suffixes will be treated as seconds while suffixes will be
+/// parsed using https://crates.io/crates/humantime
+#[cfg(feature = "cli")]
+fn deserialize_duration<'de, D>(deserializer: D) -> Result<Duration, D::Error> where D:Deserializer<'de> {
+    struct FlushIntervalVisitor;
+
+    impl Visitor<'_> for FlushIntervalVisitor {
+        type Value = Duration;
+
+        fn expecting(&self, formatter: &mut Formatter) -> std::fmt::Result {
+            formatter.write_str("a non negative number")
+        }
+
+        fn visit_u64<E>(self, v: u64) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            Ok(Duration::from_millis(v))
+        }
+    }
+
+    deserializer.deserialize_any(FlushIntervalVisitor)
+}
+
 #[cfg(test)]
 #[cfg(feature = "cli")]
 mod tests {
     use super::*;
+
+    #[test]
+    fn flush_duration_milliseconds() {
+        let yaml = r#"
+            middlewares:
+              - type: aggregate-metrics
+                flush_interval: 125
+        "#;
+        let config = serde_yaml::from_str::<Config>(yaml).unwrap();
+        assert!(matches!(&config.middlewares[0], MiddlewareConfig::AggregateMetrics(c) if c.flush_interval == Duration::from_millis(125)));
+    }
+
+    #[test]
+    fn flush_duration_negative_number() {
+        let yaml = r#"
+            middleware:
+              - type: aggregate-metrics
+                flush_interval: -1000
+        "#;
+        let config = serde_yaml::from_str::<Config>(yaml);
+        assert!(config.is_err());
+    }
 
     #[test]
     fn config() {
@@ -152,7 +205,7 @@ mod tests {
                     AggregateMetricsConfig {
                         aggregate_counters: true,
                         aggregate_gauges: true,
-                        flush_interval: 1,
+                        flush_interval: 1s,
                         flush_offset: 0,
                         max_map_size: None,
                     },

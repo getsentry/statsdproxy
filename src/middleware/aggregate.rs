@@ -1,10 +1,7 @@
 #[cfg(test)]
 use std::sync::Mutex;
 
-use std::{
-    collections::HashMap,
-    time::{SystemTime, UNIX_EPOCH},
-};
+use std::{collections::HashMap, time::{SystemTime, UNIX_EPOCH}};
 use std::{fmt, str};
 
 use crate::{config::AggregateMetricsConfig, middleware::Middleware, types::Metric};
@@ -142,16 +139,16 @@ where
             SystemTime::now()
                 .duration_since(UNIX_EPOCH)
                 .unwrap()
-                .as_secs()
+                .as_millis() as u64
         });
 
         let rounded_bucket =
-            i64::try_from((now / self.config.flush_interval) * self.config.flush_interval)
+            i64::try_from((now / self.config.flush_interval.as_millis() as u64) * self.config.flush_interval.as_millis() as u64)
                 .expect("overflow when calculating with flush_interval");
         let rounded_bucket = u64::try_from(rounded_bucket + self.config.flush_offset)
             .expect("overflow when calculating with flush_interval");
 
-        if self.last_flushed_at + self.config.flush_interval <= rounded_bucket {
+        if self.last_flushed_at + self.config.flush_interval.as_millis() as u64 <= rounded_bucket {
             self.flush_metrics();
             self.last_flushed_at = rounded_bucket;
         }
@@ -173,7 +170,7 @@ where
 #[cfg(test)]
 mod tests {
     use std::cell::RefCell;
-
+    use std::time::Duration;
     use super::*;
 
     use crate::testutils::FnStep;
@@ -183,7 +180,7 @@ mod tests {
         let config = AggregateMetricsConfig {
             aggregate_counters: true,
             aggregate_gauges: true,
-            flush_interval: 10,
+            flush_interval: Duration::from_millis(100),
             flush_offset: 0,
             max_map_size: None,
         };
@@ -201,7 +198,7 @@ mod tests {
             b"users.online:1|c|@0.5|#country:china".to_vec(),
         ));
 
-        *CURRENT_TIME.lock().unwrap() = Some(1);
+        *CURRENT_TIME.lock().unwrap() = Some(10);
 
         aggregator.poll();
 
@@ -211,7 +208,52 @@ mod tests {
 
         assert_eq!(results.borrow_mut().len(), 0);
 
-        *CURRENT_TIME.lock().unwrap() = Some(11);
+        *CURRENT_TIME.lock().unwrap() = Some(110);
+
+        aggregator.poll();
+
+        assert_eq!(
+            results.borrow_mut().as_slice(),
+            &[Metric::new(
+                b"users.online:2|c|@0.5|#country:china".to_vec()
+            )]
+        );
+    }
+
+    #[test]
+    fn counter_seconds() {
+        let config = AggregateMetricsConfig {
+            aggregate_counters: true,
+            aggregate_gauges: true,
+            flush_interval: Duration::from_secs(1),
+            flush_offset: 0,
+            max_map_size: None,
+        };
+        let results = RefCell::new(vec![]);
+        let next = FnStep(|metric: &mut Metric| {
+            results.borrow_mut().push(metric.clone());
+        });
+        let mut aggregator = AggregateMetrics::new(config, next);
+
+        *CURRENT_TIME.lock().unwrap() = Some(0);
+
+        aggregator.poll();
+
+        aggregator.submit(&mut Metric::new(
+            b"users.online:1|c|@0.5|#country:china".to_vec(),
+        ));
+
+        *CURRENT_TIME.lock().unwrap() = Some(101);
+
+        aggregator.poll();
+
+        aggregator.submit(&mut Metric::new(
+            b"users.online:1|c|@0.5|#country:china".to_vec(),
+        ));
+
+        assert_eq!(results.borrow_mut().len(), 0);
+
+        *CURRENT_TIME.lock().unwrap() = Some(1001);
 
         aggregator.poll();
 
@@ -228,7 +270,7 @@ mod tests {
         let config = AggregateMetricsConfig {
             aggregate_counters: true,
             aggregate_gauges: true,
-            flush_interval: 10,
+            flush_interval: Duration::from_millis(100),
             flush_offset: 0,
             max_map_size: None,
         };
@@ -246,7 +288,7 @@ mod tests {
             b"users.online:3|g|@0.5|#country:china".to_vec(),
         ));
 
-        *CURRENT_TIME.lock().unwrap() = Some(1);
+        *CURRENT_TIME.lock().unwrap() = Some(10);
 
         aggregator.poll();
 
@@ -256,7 +298,7 @@ mod tests {
 
         assert_eq!(results.borrow_mut().len(), 0);
 
-        *CURRENT_TIME.lock().unwrap() = Some(11);
+        *CURRENT_TIME.lock().unwrap() = Some(110);
 
         aggregator.poll();
 
