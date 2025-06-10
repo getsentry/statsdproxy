@@ -2,11 +2,11 @@ use anyhow::Error;
 use crate::middleware::Middleware;
 use crate::types::Metric;
 
-/// Different types of operations that can be used to filter out a metric by name.
+/// Different types of operations that can be used to strip out a metric tag by name.
 pub enum FilterType {
-    /// The metric starts with the specified string.
+    /// The metric tag starts with the specified string.
     StartsWith(String),
-    /// The metric ends with the specified string.
+    /// The metric tag ends with the specified string.
     EndsWith(String)
 }
 
@@ -20,33 +20,33 @@ impl FilterType {
     }
 }
 
-/// A middleware that filters metric tags based on configurable filter rules.
+/// A middleware that strips metric tags based on configurable filter rules.
 ///
-/// This middleware allows you to selectively filter out tags from metrics based on predefined
+/// This middleware allows you to selectively strip tags from metrics based on predefined
 /// filter rules. It's particularly useful when you want to:
 /// - Apply consistent tag filtering across multiple metric calls
 /// - Manage metric cardinality by filtering out certain tags
 /// - Configure tag filtering at a central location rather than in individual metric calls
 ///
-/// This middleware is particularly useful for managing metric cardinality. For example, you can
+/// A common use case is managing metric cardinality. For example, you can
 /// filter out high-cardinality tags (like user IDs) in certain environments while keeping them
 /// in others, all without modifying the metric emission code.
-pub struct FilterTag<M> {
-    /// A list of filter rules that determine which tags should be filtered out.
+pub struct StripTag<M> {
+    /// A list of filter rules that determine which tags should be stripped out.
     filters: Vec<FilterType>,
     /// The next middleware in the chain.
     next: M
 }
 
-impl<M> FilterTag<M> where M:Middleware {
-    pub fn new(filters: Vec<FilterType>, next: M) -> FilterTag<M> {
+impl<M> StripTag<M> where M:Middleware {
+    pub fn new(filters: Vec<FilterType>, next: M) -> StripTag<M> {
         Self {
             filters, next
         }
     }
 }
 
-impl<M> Middleware for FilterTag<M> where M:Middleware {
+impl<M> Middleware for StripTag<M> where M:Middleware {
     fn join(&mut self) -> Result<(), Error> {
         self.next.join()
     }
@@ -76,7 +76,7 @@ impl<M> Middleware for FilterTag<M> where M:Middleware {
 #[cfg(test)]
 mod tests {
     use std::cell::RefCell;
-    use crate::middleware::filter_tag::{FilterTag, FilterType};
+    use crate::middleware::strip_tag::{StripTag, FilterType};
     use crate::middleware::Middleware;
     use crate::testutils::FnStep;
     use crate::types::Metric;
@@ -87,7 +87,7 @@ mod tests {
         let next = FnStep(|metric: &mut Metric| {
             results.borrow_mut().push(metric.clone());
         });
-        let mut filter = FilterTag::new(vec![FilterType::StartsWith("hc_".to_owned())], next);
+        let mut filter = StripTag::new(vec![FilterType::StartsWith("hc_".to_owned())], next);
         filter.submit(&mut Metric::new(
             b"foo.bar:1|c|#abc.tag:test,hc_project:1000".to_vec(),
         ));
@@ -104,7 +104,7 @@ mod tests {
         let next = FnStep(|metric: &mut Metric| {
             results.borrow_mut().push(metric.clone());
         });
-        let mut filter = FilterTag::new(vec![FilterType::EndsWith("_hc".to_owned())], next);
+        let mut filter = StripTag::new(vec![FilterType::EndsWith("_hc".to_owned())], next);
         filter.submit(&mut Metric::new(
             b"foo.bar:1|c|#abc.tag:test,project_hc:1000".to_vec(),
         ));
@@ -121,7 +121,7 @@ mod tests {
         let next = FnStep(|metric: &mut Metric| {
             results.borrow_mut().push(metric.clone());
         });
-        let mut filter = FilterTag::new(vec![
+        let mut filter = StripTag::new(vec![
             FilterType::StartsWith("hc_".to_owned()),
             FilterType::EndsWith("_with_ending".to_owned())
         ], next);

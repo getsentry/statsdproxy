@@ -7,7 +7,7 @@ pub mod aggregate;
 pub mod allow_tag;
 pub mod cardinality_limit;
 pub mod deny_tag;
-pub mod filter_tag;
+pub mod strip_tag;
 pub mod mirror;
 pub mod sample;
 pub mod tag_cardinality_limit;
