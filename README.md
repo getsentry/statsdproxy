@@ -19,8 +19,8 @@ unnecessarily strict parsing. Statsdproxy intends to orient itself around
 protocol but should gracefully degrade for other statsd dialects, in that those
 metrics and otherwise unparseable bytes will be forwarded as-is.
 
-**This is not a Sentry product**, not deployed in any sort of production
-environment, but a side-project done during Hackweek.
+**This is not a Sentry product**, but internal tooling used in some components
+(Relay, Snuba's Rust consumer)
 
 
 ## Basic usage
