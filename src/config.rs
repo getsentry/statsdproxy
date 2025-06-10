@@ -1,6 +1,5 @@
 #[cfg(feature = "cli")]
 use std::fmt::Formatter;
-#[cfg(feature = "cli")]
 use std::time::Duration;
 #[cfg(feature = "cli")]
 use serde::de::Visitor;

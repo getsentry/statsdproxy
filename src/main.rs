@@ -50,9 +50,9 @@ fn main() -> Result<(), Error> {
             }
             config::MiddlewareConfig::StripTag(config) => {
                 let filters = config.starts_with.into_iter()
-                    .map(|s| FilterType::StartsWith(s))
+                    .map(FilterType::StartsWith)
                     .chain(config.ends_with.into_iter()
-                        .map(|s| FilterType::EndsWith(s)))
+                        .map(FilterType::EndsWith))
                     .collect();
                 client = Box::new(middleware::strip_tag::StripTag::new(filters, client));
             }
