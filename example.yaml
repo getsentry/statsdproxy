@@ -16,6 +16,11 @@ middlewares:
   - type: allow-tag
     tags: [x, y, z]
 
+  # Removes all tags that either start with "foo" or end with "bar"
+  - type: strip-tag
+    starts_with: [foo]
+    ends_with: [bar]
+
   # Apply a limit on the number of timeseries that can be passed through.
   # Multiple limits with different windows can be specified.
   - type: cardinality-limit

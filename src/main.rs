@@ -5,6 +5,7 @@ use clap::Parser;
 
 use statsdproxy::config;
 use statsdproxy::middleware::{self, server::Server, upstream::Upstream};
+use statsdproxy::middleware::strip_tag::FilterType;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -46,6 +47,14 @@ fn main() -> Result<(), Error> {
             }
             config::MiddlewareConfig::DenyTag(config) => {
                 client = Box::new(middleware::deny_tag::DenyTag::new(config, client));
+            }
+            config::MiddlewareConfig::StripTag(config) => {
+                let filters = config.starts_with.into_iter()
+                    .map(|s| FilterType::StartsWith(s))
+                    .chain(config.ends_with.into_iter()
+                        .map(|s| FilterType::EndsWith(s)))
+                    .collect();
+                client = Box::new(middleware::strip_tag::StripTag::new(filters, client));
             }
             config::MiddlewareConfig::CardinalityLimit(config) => {
                 client = Box::new(middleware::cardinality_limit::CardinalityLimit::new(

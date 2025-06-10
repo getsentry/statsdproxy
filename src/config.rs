@@ -28,6 +28,7 @@ impl Config {
 pub enum MiddlewareConfig {
     DenyTag(DenyTagConfig),
     AllowTag(AllowTagConfig),
+    StripTag(StripTagConfig),
     CardinalityLimit(CardinalityLimitConfig),
     AggregateMetrics(AggregateMetricsConfig),
     Sample(SampleConfig),
@@ -45,6 +46,14 @@ pub struct DenyTagConfig {
 #[derive(Debug, PartialEq)]
 pub struct AllowTagConfig {
     pub tags: Vec<String>,
+}
+
+#[cfg_attr(feature = "cli", derive(Deserialize))]
+#[derive(Debug, Default, PartialEq)]
+#[serde(default)]
+pub struct StripTagConfig {
+    pub starts_with: Vec<String>,
+    pub ends_with: Vec<String>,
 }
 
 #[cfg_attr(feature = "cli", derive(Deserialize))]
@@ -168,6 +177,20 @@ mod tests {
     }
 
     #[test]
+    fn test_empty_strip_config() {
+        let yaml = r#"
+            middlewares:
+              - type: strip-tag
+        "#;
+        let config = serde_yaml::from_str::<Config>(yaml).unwrap();
+        let empty_config = MiddlewareConfig::StripTag(StripTagConfig {
+            starts_with: Vec::new(),
+            ends_with: Vec::new(),
+        });
+        assert_eq!(config.middlewares[0], empty_config);
+    }
+
+    #[test]
     fn config() {
         let config = Config::new("example.yaml").unwrap();
         insta::assert_debug_snapshot!(config, @r###"
@@ -188,6 +211,16 @@ mod tests {
                             "x",
                             "y",
                             "z",
+                        ],
+                    },
+                ),
+                StripTag(
+                    StripTagConfig {
+                        starts_with: [
+                            "foo",
+                        ],
+                        ends_with: [
+                            "bar",
                         ],
                     },
                 ),
