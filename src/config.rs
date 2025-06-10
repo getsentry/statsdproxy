@@ -1,4 +1,6 @@
+#[cfg(feature = "cli")]
 use std::fmt::Formatter;
+#[cfg(feature = "cli")]
 use std::time::Duration;
 #[cfg(feature = "cli")]
 use serde::de::Visitor;
@@ -50,9 +52,10 @@ pub struct AllowTagConfig {
 
 #[cfg_attr(feature = "cli", derive(Deserialize))]
 #[derive(Debug, Default, PartialEq)]
-#[serde(default)]
 pub struct StripTagConfig {
+    #[cfg_attr(feature = "cli", serde(default))]
     pub starts_with: Vec<String>,
+    #[cfg_attr(feature = "cli", serde(default))]
     pub ends_with: Vec<String>,
 }
 
