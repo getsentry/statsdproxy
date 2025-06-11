@@ -172,20 +172,6 @@ mod tests {
         assert!(config.is_err());
     }
 
-    // #[test]
-    // fn test_empty_strip_config() {
-    //     let yaml = r#"
-    //         middlewares:
-    //           - type: deny-tag
-    //     "#;
-    //     let config = serde_yaml::from_str::<Config>(yaml).unwrap();
-    //     let empty_config = MiddlewareConfig::StripTag(StripTagConfig {
-    //         starts_with: Vec::new(),
-    //         ends_with: Vec::new(),
-    //     });
-    //     assert_eq!(config.middlewares[0], empty_config);
-    // }
-
     #[test]
     fn config() {
         let config = Config::new("example.yaml").unwrap();
