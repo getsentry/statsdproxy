@@ -7,7 +7,7 @@ A proxy for transforming, pre-aggregating and routing statsd metrics, like
 Currently supports the following transformations:
 
 * Deny- or allow-listing of specific tag keys or metric names
-* Strip tags based on prefix or suffix
+* Deny tags based on prefix or suffix
 * Adding hardcoded tags to all metrics
 * Basic cardinality limiting, tracking the number of distinct tag values per
   key or the number of overall timeseries (=combinations of metrics and tags).
