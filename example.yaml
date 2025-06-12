@@ -8,8 +8,11 @@
 
 middlewares:
   # Remove a list of tag names ("a", "b" and "c") from incoming metrics
+  # Also removes tags that start or end with certain words ("foo" or "bar")
   - type: deny-tag
     tags: [a, b, c]
+    starts_with: [foo]
+    ends_with: [bar]
 
   # Allow a list of tag names ("a", "b" and "c") from incoming metrics, and
   # remove all other tags.

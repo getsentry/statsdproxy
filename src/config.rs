@@ -1,3 +1,4 @@
+#[cfg(feature = "cli")]
 use std::fmt::Formatter;
 use std::time::Duration;
 #[cfg(feature = "cli")]
@@ -39,6 +40,10 @@ pub enum MiddlewareConfig {
 #[derive(Debug, PartialEq)]
 pub struct DenyTagConfig {
     pub tags: Vec<String>,
+    #[cfg_attr(feature = "cli", serde(default))]
+    pub starts_with: Vec<String>,
+    #[cfg_attr(feature = "cli", serde(default))]
+    pub ends_with: Vec<String>,
 }
 
 #[cfg_attr(feature = "cli", derive(Deserialize))]
@@ -179,6 +184,12 @@ mod tests {
                             "a",
                             "b",
                             "c",
+                        ],
+                        starts_with: [
+                            "foo",
+                        ],
+                        ends_with: [
+                            "bar",
                         ],
                     },
                 ),
