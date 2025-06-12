@@ -1,3 +1,11 @@
+## 0.4.0
+
+### Various fixes & improvements
+
+- feat(middleware): extend deny middleware to deny based on prefix or suffix (#58) by @Litarnus
+- This is now actually deployed (#59) by @untitaker
+- build(deps): bump crossbeam-channel from 0.5.13 to 0.5.15 (#57) by @dependabot
+
 ## 0.3.0
 
 ### Various fixes & improvements
