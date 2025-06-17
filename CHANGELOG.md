@@ -1,3 +1,9 @@
+## 0.4.1
+
+### Various fixes & improvements
+
+- feat: add Clone for {Deny,Allow}TagConfig (#60) by @Litarnus
+
 ## 0.4.0
 
 ### Various fixes & improvements

@@ -3,7 +3,7 @@ name = "statsdproxy"
 authors = ["Sentry <oss@sentry.io>"]
 description = "A proxy for transforming, pre-aggregating and routing statsd metrics"
 repository = "https://github.com/getsentry/statsdproxy"
-version = "0.4.0"
+version = "0.4.1"
 edition = "2021"
 license = "Apache-2.0"
 
