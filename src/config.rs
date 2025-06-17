@@ -37,7 +37,7 @@ pub enum MiddlewareConfig {
 }
 
 #[cfg_attr(feature = "cli", derive(Deserialize))]
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct DenyTagConfig {
     pub tags: Vec<String>,
     #[cfg_attr(feature = "cli", serde(default))]
@@ -47,7 +47,7 @@ pub struct DenyTagConfig {
 }
 
 #[cfg_attr(feature = "cli", derive(Deserialize))]
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct AllowTagConfig {
     pub tags: Vec<String>,
 }
