@@ -40,7 +40,7 @@ pub struct MetricTag<'a> {
 }
 
 impl MetricTag<'_> {
-    pub fn new(bytes: &[u8]) -> MetricTag {
+    pub fn new(bytes: &[u8]) -> MetricTag<'_> {
         MetricTag {
             raw: bytes,
             name_value_sep_pos: bytes.iter().position(|&b| b == b':'),
@@ -135,7 +135,7 @@ impl Metric {
         self.tags_pos.map(|(i, j)| &self.raw[i..j])
     }
 
-    pub fn tags_iter(&self) -> MetricTagIterator {
+    pub fn tags_iter(&self) -> MetricTagIterator<'_> {
         MetricTagIterator {
             remaining_tags: self.tags(),
         }
