@@ -3,5 +3,6 @@ pub mod cadence;
 pub mod config;
 pub mod middleware;
 
+#[cfg(test)]
 mod testutils;
 pub mod types;
